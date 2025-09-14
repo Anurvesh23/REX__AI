@@ -12,35 +12,28 @@ import GeneratingQuestions from "./generating-questions"
 import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
-import { startInterview, evaluateAnswer } from "@/lib/api"
+import { startInterview } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 
 interface InterviewSettings {
-  num_questions: number
-  interview_type: "technical" | "behavioral" | "mixed"
-  difficulty: "easy" | "medium" | "hard"
-  focus_areas: string[]
-  job_role: string
-  save_answers: boolean
-  time_limit: boolean
-  time_per_question: number
+  num_questions: number;
+  difficulty: "easy" | "medium" | "hard";
+  job_role: string;
+  time_per_question: number; // in minutes
+  time_limit: boolean; // <-- This was the missing property
 }
 
-// Add "guidelines" to the flow
-type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "results"
+type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "results";
 
 export default function MockInterviewPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
-    num_questions: 5,
-    interview_type: "mixed",
+    num_questions: 10,
     difficulty: "medium",
-    focus_areas: [],
     job_role: "",
-    save_answers: true,
-    time_limit: true, // Enable timer by default
-    time_per_question: 3, // 3 minutes per question
+    time_per_question: 1.5,
+    time_limit: true, // It was also missing from the initial state
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
@@ -64,11 +57,15 @@ export default function MockInterviewPage() {
   const handleStartInterview = async () => {
     try {
       const data = await startInterview(settings.job_role, settings.difficulty, settings.num_questions);
-      setQuestions(data.questions);
-      setCurrentStep("guidelines"); // Move to guidelines after fetching
+      if (data.questions && data.questions.length > 0) {
+        setQuestions(data.questions);
+        setCurrentStep("guidelines");
+      } else {
+        throw new Error("AI did not return any questions.");
+      }
     } catch (error) {
       console.error("Failed to generate questions:", error);
-      alert("There was an error generating questions. Please try again.");
+      alert("There was an error generating questions from the AI. Please try again.");
       setCurrentStep("difficulty");
     }
   }
@@ -77,30 +74,17 @@ export default function MockInterviewPage() {
     setCurrentStep("interview");
   }
 
-  const handleEvaluateAnswer = async (question: string, answer: string) => {
-    return await evaluateAnswer(question, answer)
-  }
+  const handleInterviewComplete = (answers: any[]) => {
+    const correctAnswers = answers.filter(a => a.is_correct).length;
+    const totalQuestions = questions.length;
+    const overallScore = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
-  const handleInterviewComplete = async (answers: any[]) => {
-    const scores = answers.filter((a) => a.score).map((a) => a.score)
-    const overallScore = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length)) : 0
-    const categoryScores = {
-      clarity: Math.floor(Math.random() * 20) + 80,
-      confidence: Math.floor(Math.random() * 20) + 75,
-      technical_knowledge: Math.floor(Math.random() * 25) + 75,
-      communication: Math.floor(Math.random() * 15) + 80,
-    }
     const results = {
       questions,
       answers,
       overall_score: overallScore,
-      category_scores: categoryScores,
-      feedback: "Great job overall! You demonstrated strong technical knowledge and communication skills.",
-      suggestions: [
-        "Practice explaining complex concepts in simpler terms.",
-        "Work on providing more specific examples from your experience using the STAR method.",
-      ],
-      duration_minutes: Math.floor(answers.reduce((total, a) => total + a.time_taken, 0) / 60),
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
     }
 
     setInterviewResults(results)
@@ -111,7 +95,7 @@ export default function MockInterviewPage() {
     setCurrentStep("selection")
     setQuestions([])
     setInterviewResults(null)
-    setSettings((prev) => ({ ...prev, job_role: "", focus_areas: [] }))
+    setSettings((prev) => ({ ...prev, job_role: "", difficulty: "medium" }))
   }
 
   const renderCurrentStep = () => {
@@ -130,7 +114,6 @@ export default function MockInterviewPage() {
             questions={questions}
             settings={settings}
             onComplete={handleInterviewComplete}
-            onEvaluateAnswer={handleEvaluateAnswer}
           />
         ) : <GeneratingQuestions />;
       case "results":
@@ -154,14 +137,14 @@ export default function MockInterviewPage() {
               </Link>
               <div className="flex items-center space-x-3">
                 <MessageSquare className="h-8 w-8 text-green-600" />
-                <span className="text-2xl font-bold text-slate-900 dark:text-white">Mock Interview</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">AI Skill Test</span>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="secondary">AI-Powered</Badge>
               {currentStep !== "selection" && currentStep !== "generating" && (
                 <Button variant="outline" onClick={handleRestart}>
-                  Start New Interview
+                  Start New Test
                 </Button>
               )}
             </div>
