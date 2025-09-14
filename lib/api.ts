@@ -116,7 +116,7 @@ John Doe`
   },
 }
 
-// Mock Interview API
+// Mock Interview API (Legacy/Simulated)
 export const interviewAPI = {
   async generateQuestions(jobRole: string, resumeText?: string, settings?: any) {
     // Simulate AI question generation
@@ -250,14 +250,15 @@ export const jobAPI = {
   },
 }
 
-// Mock Interview API
-export async function startInterview(role: string, difficulty: string) {
+// --- Live AI Interview API Functions ---
+
+export async function startInterview(role: string, difficulty: string, num_questions: number) {
   const response = await fetch("http://localhost:8000/interview/start/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ role, difficulty }),
+    body: JSON.stringify({ role, difficulty, num_questions }),
   });
   if (!response.ok) {
     throw new Error("Failed to start interview");

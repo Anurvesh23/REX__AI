@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MessageSquare, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import RoleSelection from "./role-selection"
-import DifficultySelection from "./difficulty-selection" // <-- New import
+import DifficultySelection from "./difficulty-selection"
+import GeneratingQuestions from "./generating-questions" // <-- New import
 import SettingsPanel from "./settings-panel"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
@@ -25,8 +26,8 @@ interface InterviewSettings {
   time_per_question: number
 }
 
-// Updated: Added "difficulty" to the flow
-type InterviewStep = "selection" | "difficulty" | "settings" | "interview" | "results"
+// Updated: Added "generating" to the flow
+type InterviewStep = "selection" | "difficulty" | "generating" | "settings" | "interview" | "results"
 
 export default function MockInterviewPage() {
   const { user } = useAuth()
@@ -44,40 +45,43 @@ export default function MockInterviewPage() {
   const [selectedRoleTitle, setSelectedRoleTitle] = useState("")
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false)
+  
+  // No longer need isGeneratingQuestions state, as the currentStep handles it
+
+  useEffect(() => {
+    // This effect will trigger the API call when the step changes to "generating"
+    if (currentStep === "generating") {
+      handleStartInterview();
+    }
+  }, [currentStep]);
 
   const handleRoleSelect = (role: string) => {
-    setSelectedRoleTitle(role) // Store the display-friendly role title
+    setSelectedRoleTitle(role)
     setSettings((prev) => ({
       ...prev,
-      job_role: role.toLowerCase().replace(/\s+/g, "-"),
+      job_role: role, // Use the user-friendly name for display
     }))
-    setCurrentStep("difficulty") // <-- Move to the new difficulty step
+    setCurrentStep("difficulty")
   }
 
-  // New handler for difficulty selection
   const handleDifficultySelect = (difficulty: "easy" | "medium" | "hard") => {
     setSettings((prev) => ({
       ...prev,
       difficulty: difficulty,
     }))
-    // For now, let's go straight to starting the interview after difficulty selection.
-    // If you want the settings panel, change this to setCurrentStep("settings")
-    handleStartInterview(difficulty)
+    // This now transitions to the "generating" screen, which then triggers the API call
+    setCurrentStep("generating")
   }
 
-  const handleStartInterview = async (selectedDifficulty?: "easy" | "medium" | "hard") => {
-    setIsGeneratingQuestions(true)
+  const handleStartInterview = async () => {
     try {
-      // Use the selected difficulty if provided, otherwise use the one from settings
-      const difficultyToUse = selectedDifficulty || settings.difficulty
-      const data = await startInterview(settings.job_role, difficultyToUse)
-      setQuestions(data.questions)
-      setCurrentStep("interview")
+      const data = await startInterview(settings.job_role, settings.difficulty, settings.num_questions);
+      setQuestions(data.questions);
+      setCurrentStep("interview"); // <-- Move to the interview after questions are fetched
     } catch (error) {
-      console.error("Failed to generate questions:", error)
-    } finally {
-      setIsGeneratingQuestions(false)
+      console.error("Failed to generate questions:", error);
+      alert("There was an error generating questions. Please try again.");
+      setCurrentStep("difficulty"); // Go back to difficulty selection on error
     }
   }
 
@@ -118,33 +122,24 @@ export default function MockInterviewPage() {
     setSettings((prev) => ({ ...prev, job_role: "", focus_areas: [] }))
   }
 
-  // Updated: Render component based on the current step
   const renderCurrentStep = () => {
     switch (currentStep) {
       case "selection":
         return <RoleSelection onSelectRole={handleRoleSelect} />
       case "difficulty":
         return <DifficultySelection role={selectedRoleTitle} onSelectDifficulty={handleDifficultySelect} />
-      // The settings panel is currently skipped, but you can re-enable it by changing handleDifficultySelect
-      case "settings":
-        return (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <SettingsPanel
-              settings={settings}
-              onSettingsChange={setSettings}
-              onStartInterview={() => handleStartInterview()}
-            />
-          </motion.div>
-        )
+      case "generating": // <-- New case for the loading screen
+        return <GeneratingQuestions />;
       case "interview":
-        return (
+        // Ensure we don't render the interview session before questions are loaded
+        return questions.length > 0 ? (
           <InterviewSession
             questions={questions}
             settings={settings}
             onComplete={handleInterviewComplete}
             onEvaluateAnswer={handleEvaluateAnswer}
           />
-        )
+        ) : <GeneratingQuestions />; // Show loader as a fallback
       case "results":
         return interviewResults && <FeedbackDisplay results={interviewResults} onRestartInterview={handleRestart} />
       default:
@@ -171,7 +166,7 @@ export default function MockInterviewPage() {
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="secondary">AI-Powered</Badge>
-              {currentStep !== "selection" && (
+              {currentStep !== "selection" && currentStep !== "generating" && (
                 <Button variant="outline" onClick={handleRestart}>
                   Start New Interview
                 </Button>
