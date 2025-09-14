@@ -48,46 +48,46 @@ const roles = {
     {
       title: "Machine Learning Engineer",
       description: "Builds and deploys machine learning models.",
-      image: "/images/roles/machine-learning-engineer.png",
+      image: "/images/roles/machine-learning-engineer.jpg",
     },
     {
       title: "DevOps Engineer",
       description: "Manages infrastructure and automates deployment.",
-      image: "/images/roles/devops-engineer.png",
+      image: "/images/roles/devops-engineer.jpg",
     },
   ],
   Management: [
     {
       title: "Product Manager",
       description: "Defines product vision and manages the product lifecycle.",
-      image: "/images/roles/product-manager.png",
+      image: "/images/roles/product-manager.jpg",
     },
     {
       title: "HR Manager",
       description: "Oversees recruitment, employee relations, and HR policies.",
-      image: "/images/roles/hr-manager.png",
+      image: "/images/roles/hr-manager.jpg",
     },
     {
       title: "Business Analyst",
       description: "Analyzes business processes and recommends improvements.",
-      image: "/images/roles/business-analyst.png",
+      image: "/images/roles/business-analyst.jpg",
     },
     {
       title: "Marketing Manager",
       description: "Develops and executes marketing strategies to drive growth.",
-      image: "/images/roles/marketing-manager.png",
+      image: "/images/roles/marketing-manager.jpg",
     },
   ],
   General: [
     {
       title: "Content Writer",
       description: "Creates compelling content for various digital platforms.",
-      image: "/images/roles/content-writer.png",
+      image: "/images/roles/content-writer.jpg",
     },
     {
       title: "Graphic Designer",
       description: "Designs visual assets for branding and marketing materials.",
-      image: "/images/roles/graphic-designer.png",
+      image: "/images/roles/graphic-designer.jpg",
     },
   ],
 }
