@@ -1,3 +1,5 @@
+// anurvesh23/rex__ai/REX__AI-729dd70bf78d6bdb43e54cc965c0bbf834d47f56/app/dashboard/mock-interview/role-selection.tsx
+
 "use client"
 
 import Image from "next/image"
@@ -45,10 +47,10 @@ const roles = {
     },
   ],
   Management: [
-    // Add management roles here when ready
+    // You can add management roles here in the same format
   ],
   General: [
-    // Add general roles here
+    // You can add general roles here in the same format
   ],
 }
 
@@ -87,18 +89,18 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
               align: "start",
               loop: false,
             }}
-            className="w-full"
+            className="w-full max-w-xs sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto"
           >
-            <CarouselContent>
+            <CarouselContent className="-ml-4">
               {roles.Tech.map((role, index) => (
-                <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                  <div className="p-1">
+                <CarouselItem key={index} className="pl-4 sm:basis-1/2 lg:basis-1/3">
+                  <div className="p-1 h-full">
                     <Card
-                      className="group overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+                      className="group flex flex-col h-full overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
                       onClick={() => onSelectRole(role.title)}
                     >
-                      <CardContent className="flex flex-col items-start p-0">
-                        <div className="relative w-full h-40">
+                      <CardContent className="p-0 flex flex-col flex-grow">
+                        <div className="relative w-full aspect-video">
                           <Image
                             src={role.image}
                             alt={role.title}
@@ -106,10 +108,12 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         </div>
-                        <div className="p-4 w-full">
+                        <div className="p-4 flex flex-col flex-grow">
                           <h3 className="text-lg font-semibold mb-1">{role.title}</h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 h-10">{role.description}</p>
-                          <div className="mt-4 flex justify-between items-center w-full">
+                          <p className="text-sm text-slate-500 dark:text-slate-400 flex-grow min-h-[40px]">
+                            {role.description}
+                          </p>
+                          <div className="mt-4 pt-4 border-t flex justify-between items-center w-full">
                             <span className="text-sm font-medium text-blue-600">Start Test</span>
                             <ArrowRight className="h-4 w-4 text-blue-600 transition-transform duration-300 group-hover:translate-x-1" />
                           </div>
@@ -120,8 +124,8 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="ml-12" />
-            <CarouselNext className="mr-12" />
+            <CarouselPrevious />
+            <CarouselNext />
           </Carousel>
         </TabsContent>
       </Tabs>
