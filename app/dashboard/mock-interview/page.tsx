@@ -19,8 +19,8 @@ interface InterviewSettings {
   num_questions: number;
   difficulty: "easy" | "medium" | "hard";
   job_role: string;
-  time_per_question: number; // in minutes
-  time_limit: boolean; // <-- This was the missing property
+  time_per_question: number;
+  time_limit: boolean;
 }
 
 type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "results";
@@ -33,7 +33,7 @@ export default function MockInterviewPage() {
     difficulty: "medium",
     job_role: "",
     time_per_question: 1.5,
-    time_limit: true, // It was also missing from the initial state
+    time_limit: true,
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
@@ -114,6 +114,7 @@ export default function MockInterviewPage() {
             questions={questions}
             settings={settings}
             onComplete={handleInterviewComplete}
+            // The onEvaluateAnswer prop is now correctly removed
           />
         ) : <GeneratingQuestions />;
       case "results":
