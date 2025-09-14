@@ -48,12 +48,22 @@ const roles = {
     {
       title: "Machine Learning Engineer",
       description: "Builds and deploys machine learning models.",
-      image: "/images/roles/machine-learning-engineer.jpg",
+      image: "/images/roles/machine-learning-engineer.png",
     },
     {
       title: "DevOps Engineer",
       description: "Manages infrastructure and automates deployment.",
-      image: "/images/roles/devops-engineer.jpg",
+      image: "/images/roles/devops-engineer.png",
+    },
+    {
+      title: "Cloud Engineer",
+      description: "Manages and maintains cloud infrastructure.",
+      image: "/images/roles/cloud-engineer.png",
+    },
+    {
+      title: "Cloud Architect",
+      description: "Designs and implements cloud solutions.",
+      image: "/images/roles/cloud-architect.png",
     },
   ],
   Management: [

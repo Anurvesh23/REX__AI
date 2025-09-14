@@ -85,6 +85,8 @@ export default function SettingsPanel({ settings, onSettingsChange, onStartInter
                 <SelectItem value="cyber-security-engineer">Cyber Security Engineer</SelectItem>
                 <SelectItem value="machine-learning-engineer">Machine Learning Engineer</SelectItem>
                 <SelectItem value="devops-engineer">DevOps Engineer</SelectItem>
+                <SelectItem value="cloud-engineer">Cloud Engineer</SelectItem>
+                <SelectItem value="cloud-architect">Cloud Architect</SelectItem>
                 {/* Management Roles */}
                 <SelectItem value="product-manager">Product Manager</SelectItem>
                 <SelectItem value="hr-manager">HR Manager</SelectItem>
