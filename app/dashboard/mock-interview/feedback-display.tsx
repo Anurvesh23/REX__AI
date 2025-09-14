@@ -23,20 +23,22 @@ interface FeedbackDisplayProps {
     questions: any[]
     answers: any[]
     overall_score: number
-    category_scores: {
+    category_scores?: {
       clarity: number
       confidence: number
       technical_knowledge: number
       communication: number
     }
-    feedback: string
-    suggestions: string[]
+    feedback?: string
+    suggestions?: string[]
     duration_minutes: number
   }
   onRestartInterview: () => void
 }
 
 export default function FeedbackDisplay({ results, onRestartInterview }: FeedbackDisplayProps) {
+  const { category_scores = {}, feedback = "No feedback provided.", suggestions = [] } = results
+
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600"
     if (score >= 80) return "text-blue-600"
@@ -98,7 +100,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
             <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
               <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-purple-600">
-                {Math.round(results.duration_minutes / results.questions.length)}m
+                {results.questions.length > 0 ? Math.round(results.duration_minutes / results.questions.length) : 0}m
               </div>
               <div className="text-sm text-slate-600 dark:text-slate-400">Avg per Question</div>
             </div>
@@ -121,23 +123,23 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {Object.entries(results.category_scores).map(([category, score]) => (
+                {Object.entries(category_scores).map(([category, score]) => (
                   <div key={category} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-medium capitalize">{category.replace("_", " ")}</span>
                       <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold ${getScoreColor(score)}`}>{score}/100</span>
-                        <Badge className={getScoreBg(score)}>{getPerformanceLevel(score)}</Badge>
+                        <span className={`text-lg font-bold ${getScoreColor(score as number)}`}>{score as React.ReactNode}/100</span>
+                        <Badge className={getScoreBg(score as number)}>{getPerformanceLevel(score as number)}</Badge>
                       </div>
                     </div>
-                    <Progress value={score} className="h-2" />
+                    <Progress value={score as number} className="h-2" />
                   </div>
                 ))}
               </div>
 
               <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Overall Feedback</h3>
-                <p className="text-blue-800 dark:text-blue-200">{results.feedback}</p>
+                <p className="text-blue-800 dark:text-blue-200">{feedback}</p>
               </div>
             </CardContent>
           </Card>
@@ -210,7 +212,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {results.suggestions.map((suggestion, index) => (
+                {suggestions.map((suggestion, index) => (
                   <div key={index} className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                     <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">{suggestion}</p>

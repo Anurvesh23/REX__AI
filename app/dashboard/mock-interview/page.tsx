@@ -78,6 +78,21 @@ export default function MockInterviewPage() {
       overall_score: overallScore,
       total_questions: totalQuestions,
       correct_answers: correctAnswers,
+      category_scores: {
+        clarity: Math.floor(Math.random() * 20) + 80,
+        confidence: Math.floor(Math.random() * 20) + 75,
+        technical_knowledge: Math.floor(Math.random() * 25) + 70,
+        communication: Math.floor(Math.random() * 15) + 85,
+      },
+      feedback: "Overall, a strong performance with clear and concise answers. To improve, try to provide more specific examples for behavioral questions.",
+      suggestions: [
+        "Practice the STAR method for behavioral questions to structure your answers better.",
+        "Review common data structures and algorithms to improve technical speed.",
+        "Consider recording yourself to analyze your communication style and body language.",
+      ],
+      duration_minutes: Math.round(
+        answers.reduce((acc, a) => acc + a.time_taken, 0) / 60
+      ),
     }
 
     setInterviewResults(results)
