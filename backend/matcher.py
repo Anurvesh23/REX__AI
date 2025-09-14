@@ -7,7 +7,8 @@ import re
 import numpy as np
 from collections import defaultdict
 
-nlp = spacy.load("en_core_web_sm", disable=["parser"])
+# This line requires the 'en_core_web_sm' model you are installing.
+nlp = spacy.load("en_core_web_sm")
 
 # load models (lazy)
 EMBEDDER = load_embedder()
@@ -79,10 +80,6 @@ def extract_experience_years(text):
     return 0
 
 def score_resume_vs_jd(resume_path, jd_text, weights=None, required_years=0, top_k_chunks=4):
-    """
-    Core: loads resume, chunks it, builds embeddings, finds top matching resume chunks for the JD,
-    reranks using cross-encoder for accuracy, computes features and recommendations.
-    """
     if weights is None:
         weights = {"skills": 0.35, "semantic": 0.45, "experience": 0.20}
 
@@ -91,81 +88,64 @@ def score_resume_vs_jd(resume_path, jd_text, weights=None, required_years=0, top
     raw_expanded = expand_acronyms_via_llm(raw)
     jd_expanded = expand_acronyms_via_llm(jd_text)
 
-    # chunk resume and JD
     resume_chunks = chunk_text(raw_expanded, max_words=90, overlap=20)
     jd_chunks = chunk_text(jd_expanded, max_words=60, overlap=10)
 
-    # embed resume chunks and JD chunks
     resume_embs = embed_texts(resume_chunks, model=EMBEDDER)
     jd_embs = embed_texts(jd_chunks, model=EMBEDDER)
 
-    # build faiss index for resume chunks
     index = build_faiss_index(resume_embs)
 
-    # for each JD chunk, find top-k resume chunks (semantic search)
     jd_to_resume_hits = []
     for j_emb in jd_embs:
         D, I = search_faiss(index, j_emb.reshape(-1), top_k=top_k_chunks)
         jd_to_resume_hits.append(list(zip(I.tolist(), D.tolist())))
 
-    # Flatten candidate pairs and rerank with cross-encoder
     pair_list = []
     pair_indices = []
     for j_idx, hits in enumerate(jd_to_resume_hits):
         for (r_idx, score) in hits:
             pair_list.append((jd_chunks[int(j_idx)][:512], resume_chunks[int(r_idx)][:512]))
             pair_indices.append((j_idx, r_idx))
-    # cross-encoder scoring (more accurate)
+
     cross_scores = CROSS_ENCODER.predict(pair_list, show_progress_bar=False) if pair_list else []
-    # aggregate scores per resume chunk and per JD chunk
+
     per_resume_scores = defaultdict(list)
     per_jd_scores = defaultdict(list)
     for (j_idx, r_idx), cs in zip(pair_indices, cross_scores):
         per_resume_scores[r_idx].append(float(cs))
         per_jd_scores[j_idx].append(float(cs))
 
-    # semantic_score: average top cross scores across JD chunks (normalized)
     jd_scores_avg = [ (max(per_jd_scores.get(i, [0])) if per_jd_scores.get(i) else 0.0) for i in range(len(jd_chunks)) ]
-    semantic_score = float(np.mean(jd_scores_avg))  # typically between 0..some; CrossEncoder is unbounded - normalize below
+    semantic_score = float(np.mean(jd_scores_avg))
 
-    # normalize semantic_score to 0..1 using sigmoid-like mapping
-    semantic_norm = 1 / (1 + np.exp(- (semantic_score - 2)))  # tune offset for sensible range
+    semantic_norm = 1 / (1 + np.exp(- (semantic_score - 2)))
 
-    # skills & experience
     resume_skills = extract_skills_dynamic(raw_expanded)
     jd_skills = extract_skills_dynamic(jd_expanded)
     skill_overlap = len(set(resume_skills) & set(jd_skills)) / (len(set(jd_skills)) + 1e-6)
     years = extract_experience_years(raw_expanded)
     exp_match = min(years / max(1, required_years), 1.0) if required_years else min(years / max(1, years), 1.0)
 
-    # final weighted score
     final = (weights["skills"] * skill_overlap) + (weights["semantic"] * semantic_norm) + (weights["experience"] * exp_match)
     final_pct = round(float(final) * 100, 2)
 
-    # build alignment snippets: for top matched pairs show JD snippet, resume snippet, and cross score
     top_pairs_idx = np.argsort(cross_scores)[-12:] if cross_scores else []
     matches = []
     for idx in reversed(top_pairs_idx):
         j_idx, r_idx = pair_indices[idx]
-        j_idx = int(j_idx)
-        r_idx = int(r_idx)
         matches.append({
-            "jd_snippet": jd_chunks[j_idx],
-            "resume_snippet": resume_chunks[r_idx],
+            "jd_snippet": jd_chunks[int(j_idx)],
+            "resume_snippet": resume_chunks[int(r_idx)],
             "score": round(float(cross_scores[idx]), 3)
         })
         if len(matches) >= 8:
             break
 
-    # recommendations via recommender module
-    missing_skill_lines = suggest_missing_skills(jd_skills, resume_skills=resume_skills) if jd_skills else []
-    missing_skills_list = list(set(jd_skills) - set(resume_skills)) if jd_skills else []
-    bullet_suggestions = {}
-    sample_context = " ".join(resume_chunks[:2]) if resume_chunks else raw_expanded[:800]
-    for ms in missing_skills_list[:6]:
-        bullet_suggestions[ms] = generate_bullet_rewrites(ms)
-
-    learning_plan = prioritized_learning_plan(missing_skills_list) if missing_skills_list else ""
+    missing_skills = list(set(jd_skills) - set(resume_skills))
+    missing_skill_lines = suggest_missing_skills(jd_skills, resume_skills)
+    bullet_suggestions = generate_bullet_rewrites(missing_skills)
+    learning_plan = prioritized_learning_plan(missing_skills)
 
     return {
         "candidate_path": resume_path,
