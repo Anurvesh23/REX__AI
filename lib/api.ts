@@ -249,3 +249,32 @@ export const jobAPI = {
     if (error) throw error
   },
 }
+
+// Mock Interview API
+export async function startInterview(role: string, difficulty: string) {
+  const response = await fetch("http://localhost:8000/interview/start/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ role, difficulty }),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to start interview");
+  }
+  return await response.json();
+}
+
+export async function evaluateAnswer(question: string, answer: string) {
+  const response = await fetch("http://localhost:8000/interview/evaluate/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ question, answer }),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to evaluate answer");
+  }
+  return await response.json();
+}

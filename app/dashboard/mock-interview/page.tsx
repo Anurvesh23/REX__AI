@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MessageSquare, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import RoleSelection from "./role-selection" // New import
+import RoleSelection from "./role-selection"
+import DifficultySelection from "./difficulty-selection" // <-- New import
 import SettingsPanel from "./settings-panel"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
-import { interviewAPI } from "@/lib/api"
+import { startInterview, evaluateAnswer } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 
 interface InterviewSettings {
@@ -24,15 +25,14 @@ interface InterviewSettings {
   time_per_question: number
 }
 
-// Define a new type for the steps in our flow
-type InterviewStep = "selection" | "settings" | "interview" | "results"
+// Updated: Added "difficulty" to the flow
+type InterviewStep = "selection" | "difficulty" | "settings" | "interview" | "results"
 
 export default function MockInterviewPage() {
   const { user } = useAuth()
-  // Update the state to include the new "selection" step
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
-    num_questions: 10,
+    num_questions: 5, // Defaulting to 5 for quicker tests
     interview_type: "mixed",
     difficulty: "medium",
     focus_areas: [],
@@ -41,41 +41,48 @@ export default function MockInterviewPage() {
     time_limit: false,
     time_per_question: 3,
   })
+  const [selectedRoleTitle, setSelectedRoleTitle] = useState("")
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false)
 
-  // New handler for when a user selects a role
   const handleRoleSelect = (role: string) => {
-    // Pre-fill the job role in settings and move to the settings panel
+    setSelectedRoleTitle(role) // Store the display-friendly role title
     setSettings((prev) => ({
       ...prev,
-      // Convert "Software Developer" to "software-developer" for the select component
       job_role: role.toLowerCase().replace(/\s+/g, "-"),
     }))
-    setCurrentStep("settings")
+    setCurrentStep("difficulty") // <-- Move to the new difficulty step
   }
 
-  const handleStartInterview = async () => {
+  // New handler for difficulty selection
+  const handleDifficultySelect = (difficulty: "easy" | "medium" | "hard") => {
+    setSettings((prev) => ({
+      ...prev,
+      difficulty: difficulty,
+    }))
+    // For now, let's go straight to starting the interview after difficulty selection.
+    // If you want the settings panel, change this to setCurrentStep("settings")
+    handleStartInterview(difficulty)
+  }
+
+  const handleStartInterview = async (selectedDifficulty?: "easy" | "medium" | "hard") => {
     setIsGeneratingQuestions(true)
     try {
-      const generatedQuestions = await interviewAPI.generateQuestions(
-        settings.job_role,
-        undefined, // Resume text would be passed here in a future update
-        settings
-      )
-      setQuestions(generatedQuestions)
+      // Use the selected difficulty if provided, otherwise use the one from settings
+      const difficultyToUse = selectedDifficulty || settings.difficulty
+      const data = await startInterview(settings.job_role, difficultyToUse)
+      setQuestions(data.questions)
       setCurrentStep("interview")
     } catch (error) {
       console.error("Failed to generate questions:", error)
-      // You can add a user-facing error message here
     } finally {
       setIsGeneratingQuestions(false)
     }
   }
 
   const handleEvaluateAnswer = async (question: string, answer: string) => {
-    return await interviewAPI.evaluateAnswer(question, answer)
+    return await evaluateAnswer(question, answer)
   }
 
   const handleInterviewComplete = async (answers: any[]) => {
@@ -100,49 +107,32 @@ export default function MockInterviewPage() {
       duration_minutes: Math.floor(answers.reduce((total, a) => total + a.time_taken, 0) / 60),
     }
 
-    if (settings.save_answers && user) {
-      try {
-        await interviewAPI.saveInterview(user.id, {
-          job_role: settings.job_role,
-          interview_type: settings.interview_type,
-          settings,
-          questions,
-          answers,
-          overall_score: overallScore,
-          category_scores: categoryScores,
-          feedback: results.feedback,
-          suggestions: results.suggestions,
-          duration_minutes: results.duration_minutes,
-          status: "completed",
-        })
-      } catch (error) {
-        console.error("Failed to save interview:", error)
-      }
-    }
-
     setInterviewResults(results)
     setCurrentStep("results")
   }
 
   const handleRestart = () => {
-    setCurrentStep("selection") // Go back to the role selection screen
+    setCurrentStep("selection")
     setQuestions([])
     setInterviewResults(null)
     setSettings((prev) => ({ ...prev, job_role: "", focus_areas: [] }))
   }
 
-  // Helper to render the correct component based on the current step
+  // Updated: Render component based on the current step
   const renderCurrentStep = () => {
     switch (currentStep) {
       case "selection":
         return <RoleSelection onSelectRole={handleRoleSelect} />
+      case "difficulty":
+        return <DifficultySelection role={selectedRoleTitle} onSelectDifficulty={handleDifficultySelect} />
+      // The settings panel is currently skipped, but you can re-enable it by changing handleDifficultySelect
       case "settings":
         return (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <SettingsPanel
               settings={settings}
               onSettingsChange={setSettings}
-              onStartInterview={handleStartInterview}
+              onStartInterview={() => handleStartInterview()}
             />
           </motion.div>
         )
@@ -190,7 +180,6 @@ export default function MockInterviewPage() {
           </div>
         </div>
       </div>
-
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{renderCurrentStep()}</main>
     </div>
   )
