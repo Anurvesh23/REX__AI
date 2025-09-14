@@ -21,9 +21,14 @@ except Exception as e:
     print(f"FATAL: Error configuring Gemini AI. Please check your GOOGLE_API_KEY. Error: {e}")
 # -------------------------
 
+# Add the parent directory to the system path to allow module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# --- Re-enabled Imports for Resume Analyzer ---
+# This will now work because the spacy model is downloaded.
 from matcher import score_resume_vs_jd
 from utils import save_upload_to_temp
+# ---------------------------------------------
 
 app = FastAPI()
 
