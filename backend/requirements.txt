@@ -12,3 +12,4 @@ docx2txt
 PyMuPDF
 pytesseract
 Pillow
+spacy[en_core_web_sm]
