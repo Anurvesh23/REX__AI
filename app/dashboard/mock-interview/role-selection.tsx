@@ -45,12 +45,50 @@ const roles = {
       description: "Secures systems and networks from cyber threats.",
       image: "/images/roles/cyber-security.png",
     },
+    {
+      title: "Machine Learning Engineer",
+      description: "Builds and deploys machine learning models.",
+      image: "/images/roles/machine-learning-engineer.png",
+    },
+    {
+      title: "DevOps Engineer",
+      description: "Manages infrastructure and automates deployment.",
+      image: "/images/roles/devops-engineer.png",
+    },
   ],
   Management: [
-    // You can add management roles here in the same format
+    {
+      title: "Product Manager",
+      description: "Defines product vision and manages the product lifecycle.",
+      image: "/images/roles/product-manager.png",
+    },
+    {
+      title: "HR Manager",
+      description: "Oversees recruitment, employee relations, and HR policies.",
+      image: "/images/roles/hr-manager.png",
+    },
+    {
+      title: "Business Analyst",
+      description: "Analyzes business processes and recommends improvements.",
+      image: "/images/roles/business-analyst.png",
+    },
+    {
+      title: "Marketing Manager",
+      description: "Develops and executes marketing strategies to drive growth.",
+      image: "/images/roles/marketing-manager.png",
+    },
   ],
   General: [
-    // You can add general roles here in the same format
+    {
+      title: "Content Writer",
+      description: "Creates compelling content for various digital platforms.",
+      image: "/images/roles/content-writer.png",
+    },
+    {
+      title: "Graphic Designer",
+      description: "Designs visual assets for branding and marketing materials.",
+      image: "/images/roles/graphic-designer.png",
+    },
   ],
 }
 
@@ -74,60 +112,58 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
         <div className="flex justify-center">
           <TabsList>
             <TabsTrigger value="Tech">Tech</TabsTrigger>
-            <TabsTrigger value="Management" disabled>
-              Management
-            </TabsTrigger>
-            <TabsTrigger value="General" disabled>
-              General
-            </TabsTrigger>
+            <TabsTrigger value="Management">Management</TabsTrigger>
+            <TabsTrigger value="General">General</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="Tech" className="mt-8">
-          <Carousel
-            opts={{
-              align: "start",
-              loop: false,
-            }}
-            className="w-full max-w-xs sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto"
-          >
-            <CarouselContent className="-ml-4">
-              {roles.Tech.map((role, index) => (
-                <CarouselItem key={index} className="pl-4 sm:basis-1/2 lg:basis-1/3">
-                  <div className="p-1 h-full">
-                    <Card
-                      className="group flex flex-col h-full overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-                      onClick={() => onSelectRole(role.title)}
-                    >
-                      <CardContent className="p-0 flex flex-col flex-grow">
-                        <div className="relative w-full aspect-video">
-                          <Image
-                            src={role.image}
-                            alt={role.title}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        </div>
-                        <div className="p-4 flex flex-col flex-grow">
-                          <h3 className="text-lg font-semibold mb-1">{role.title}</h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 flex-grow min-h-[40px]">
-                            {role.description}
-                          </p>
-                          <div className="mt-4 pt-4 border-t flex justify-between items-center w-full">
-                            <span className="text-sm font-medium text-blue-600">Start Test</span>
-                            <ArrowRight className="h-4 w-4 text-blue-600 transition-transform duration-300 group-hover:translate-x-1" />
+        {Object.entries(roles).map(([category, roleList]) => (
+          <TabsContent key={category} value={category} className="mt-8">
+            <Carousel
+              opts={{
+                align: "start",
+                loop: false,
+              }}
+              className="w-full max-w-xs sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto"
+            >
+              <CarouselContent className="-ml-4">
+                {roleList.map((role, index) => (
+                  <CarouselItem key={index} className="pl-4 sm:basis-1/2 lg:basis-1/3">
+                    <div className="p-1 h-full">
+                      <Card
+                        className="group flex flex-col h-full overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                        onClick={() => onSelectRole(role.title)}
+                      >
+                        <CardContent className="p-0 flex flex-col flex-grow">
+                          <div className="relative w-full aspect-video">
+                            <Image
+                              src={role.image}
+                              alt={role.title}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
-        </TabsContent>
+                          <div className="p-4 flex flex-col flex-grow">
+                            <h3 className="text-lg font-semibold mb-1">{role.title}</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 flex-grow min-h-[40px]">
+                              {role.description}
+                            </p>
+                            <div className="mt-4 pt-4 border-t flex justify-between items-center w-full">
+                              <span className="text-sm font-medium text-blue-600">Start Test</span>
+                              <ArrowRight className="h-4 w-4 text-blue-600 transition-transform duration-300 group-hover:translate-x-1" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          </TabsContent>
+        ))}
       </Tabs>
     </motion.div>
   )

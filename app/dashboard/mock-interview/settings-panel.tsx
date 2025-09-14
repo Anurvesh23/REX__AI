@@ -1,3 +1,5 @@
+// anurvesh23/rex__ai/REX__AI-729dd70bf78d6bdb43e54cc965c0bbf834d47f56/app/dashboard/mock-interview/settings-panel.tsx
+
 "use client"
 
 import { useState } from "react"
@@ -74,14 +76,23 @@ export default function SettingsPanel({ settings, onSettingsChange, onStartInter
                 <SelectValue placeholder="Select job role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="frontend-developer">Frontend Developer</SelectItem>
+                {/* Tech Roles */}
+                <SelectItem value="software-developer">Software Developer</SelectItem>
+                <SelectItem value="data-analyst">Data Analyst</SelectItem>
                 <SelectItem value="backend-developer">Backend Developer</SelectItem>
-                <SelectItem value="fullstack-developer">Full Stack Developer</SelectItem>
-                <SelectItem value="data-scientist">Data Scientist</SelectItem>
-                <SelectItem value="product-manager">Product Manager</SelectItem>
-                <SelectItem value="software-engineer">Software Engineer</SelectItem>
+                <SelectItem value="frontend-developer">Frontend Developer</SelectItem>
+                <SelectItem value="qa-engineer">QA Engineer</SelectItem>
+                <SelectItem value="cyber-security-engineer">Cyber Security Engineer</SelectItem>
+                <SelectItem value="machine-learning-engineer">Machine Learning Engineer</SelectItem>
                 <SelectItem value="devops-engineer">DevOps Engineer</SelectItem>
-                <SelectItem value="ui-ux-designer">UI/UX Designer</SelectItem>
+                {/* Management Roles */}
+                <SelectItem value="product-manager">Product Manager</SelectItem>
+                <SelectItem value="hr-manager">HR Manager</SelectItem>
+                <SelectItem value="business-analyst">Business Analyst</SelectItem>
+                <SelectItem value="marketing-manager">Marketing Manager</SelectItem>
+                {/* General Roles */}
+                <SelectItem value="content-writer">Content Writer</SelectItem>
+                <SelectItem value="graphic-designer">Graphic Designer</SelectItem>
               </SelectContent>
             </Select>
           </div>
