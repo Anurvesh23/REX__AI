@@ -37,21 +37,20 @@ export default function MockInterviewPage() {
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
-  
+
   const handleRoleSelect = (role: string) => {
     setSettings((prev) => ({ ...prev, job_role: role }))
     setCurrentStep("difficulty")
   }
 
-  const handleDifficultySelect = (difficulty: "easy" | "medium" | "hard") => {
-    setSettings((prev) => ({ ...prev, difficulty: difficulty }))
-    handleStartInterview();
-  }
-
-  const handleStartInterview = async () => {
+  const handleDifficultySelectAndStart = async (difficulty: "easy" | "medium" | "hard") => {
+    // Combine setting difficulty and starting the interview process
+    const currentSettings = { ...settings, difficulty };
+    setSettings(currentSettings);
     setCurrentStep("generating");
+
     try {
-      const data = await startInterview(settings.job_role, settings.difficulty, settings.num_questions);
+      const data = await startInterview(currentSettings.job_role, difficulty, currentSettings.num_questions);
       if (data.questions && data.questions.length > 0) {
         setQuestions(data.questions);
         setCurrentStep("guidelines");
@@ -61,7 +60,7 @@ export default function MockInterviewPage() {
     } catch (error) {
       console.error("Failed to generate questions:", error);
       alert("There was an error generating questions from the AI. Please try again.");
-      setCurrentStep("difficulty");
+      setCurrentStep("difficulty"); // Revert to difficulty selection on error
     }
   }
   
@@ -98,7 +97,7 @@ export default function MockInterviewPage() {
       case "selection":
         return <RoleSelection onSelectRole={handleRoleSelect} />
       case "difficulty":
-        return <DifficultySelection role={settings.job_role} onSelectDifficulty={handleDifficultySelect} />
+        return <DifficultySelection role={settings.job_role} onSelectDifficulty={handleDifficultySelectAndStart} />
       case "generating":
         return <GeneratingQuestions />;
       case "guidelines":
