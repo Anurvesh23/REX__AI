@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,12 +38,6 @@ export default function MockInterviewPage() {
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
   
-  useEffect(() => {
-    if (currentStep === "generating") {
-      handleStartInterview();
-    }
-  }, [currentStep]);
-
   const handleRoleSelect = (role: string) => {
     setSettings((prev) => ({ ...prev, job_role: role }))
     setCurrentStep("difficulty")
@@ -55,6 +49,7 @@ export default function MockInterviewPage() {
   }
 
   const handleStartInterview = async () => {
+    setCurrentStep("generating");
     try {
       const data = await startInterview(settings.job_role, settings.difficulty, settings.num_questions);
       if (data.questions && data.questions.length > 0) {

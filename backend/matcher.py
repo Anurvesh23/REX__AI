@@ -158,7 +158,8 @@ def score_resume_vs_jd(resume_path, jd_text, weights=None, required_years=0, top
             break
 
     # recommendations via recommender module
-    missing_skill_lines = suggest_missing_skills(dj_skills := jd_skills, resume_skills=resume_skills) if jd_skills else []
+    dj_skills = jd_skills if jd_skills else []
+    missing_skill_lines = suggest_missing_skills(dj_skills, resume_skills=resume_skills)
     missing_skills_list = list(set(dj_skills) - set(resume_skills))
     bullet_suggestions = {}
     sample_context = " ".join(resume_chunks[:2]) if resume_chunks else raw_expanded[:800]
