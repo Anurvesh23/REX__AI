@@ -45,7 +45,7 @@ export default function MockInterviewPage() {
 
   const handleDifficultySelect = (difficulty: "easy" | "medium" | "hard") => {
     setSettings((prev) => ({ ...prev, difficulty: difficulty }))
-    setCurrentStep("generating")
+    handleStartInterview();
   }
 
   const handleStartInterview = async () => {
