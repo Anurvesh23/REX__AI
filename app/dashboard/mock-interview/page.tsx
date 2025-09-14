@@ -8,8 +8,8 @@ import { MessageSquare, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import RoleSelection from "./role-selection"
 import DifficultySelection from "./difficulty-selection"
-import GeneratingQuestions from "./generating-questions" // <-- New import
-import SettingsPanel from "./settings-panel"
+import GeneratingQuestions from "./generating-questions"
+import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
 import { startInterview, evaluateAnswer } from "@/lib/api"
@@ -26,50 +26,38 @@ interface InterviewSettings {
   time_per_question: number
 }
 
-// Updated: Added "generating" to the flow
-type InterviewStep = "selection" | "difficulty" | "generating" | "settings" | "interview" | "results"
+// Add "guidelines" to the flow
+type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "results"
 
 export default function MockInterviewPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
-    num_questions: 5, // Defaulting to 5 for quicker tests
+    num_questions: 5,
     interview_type: "mixed",
     difficulty: "medium",
     focus_areas: [],
     job_role: "",
     save_answers: true,
-    time_limit: false,
-    time_per_question: 3,
+    time_limit: true, // Enable timer by default
+    time_per_question: 3, // 3 minutes per question
   })
-  const [selectedRoleTitle, setSelectedRoleTitle] = useState("")
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
   
-  // No longer need isGeneratingQuestions state, as the currentStep handles it
-
   useEffect(() => {
-    // This effect will trigger the API call when the step changes to "generating"
     if (currentStep === "generating") {
       handleStartInterview();
     }
   }, [currentStep]);
 
   const handleRoleSelect = (role: string) => {
-    setSelectedRoleTitle(role)
-    setSettings((prev) => ({
-      ...prev,
-      job_role: role, // Use the user-friendly name for display
-    }))
+    setSettings((prev) => ({ ...prev, job_role: role }))
     setCurrentStep("difficulty")
   }
 
   const handleDifficultySelect = (difficulty: "easy" | "medium" | "hard") => {
-    setSettings((prev) => ({
-      ...prev,
-      difficulty: difficulty,
-    }))
-    // This now transitions to the "generating" screen, which then triggers the API call
+    setSettings((prev) => ({ ...prev, difficulty: difficulty }))
     setCurrentStep("generating")
   }
 
@@ -77,12 +65,16 @@ export default function MockInterviewPage() {
     try {
       const data = await startInterview(settings.job_role, settings.difficulty, settings.num_questions);
       setQuestions(data.questions);
-      setCurrentStep("interview"); // <-- Move to the interview after questions are fetched
+      setCurrentStep("guidelines"); // Move to guidelines after fetching
     } catch (error) {
       console.error("Failed to generate questions:", error);
       alert("There was an error generating questions. Please try again.");
-      setCurrentStep("difficulty"); // Go back to difficulty selection on error
+      setCurrentStep("difficulty");
     }
+  }
+  
+  const handleStartTest = () => {
+    setCurrentStep("interview");
   }
 
   const handleEvaluateAnswer = async (question: string, answer: string) => {
@@ -91,7 +83,7 @@ export default function MockInterviewPage() {
 
   const handleInterviewComplete = async (answers: any[]) => {
     const scores = answers.filter((a) => a.score).map((a) => a.score)
-    const overallScore = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) : 0
+    const overallScore = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length)) : 0
     const categoryScores = {
       clarity: Math.floor(Math.random() * 20) + 80,
       confidence: Math.floor(Math.random() * 20) + 75,
@@ -127,11 +119,12 @@ export default function MockInterviewPage() {
       case "selection":
         return <RoleSelection onSelectRole={handleRoleSelect} />
       case "difficulty":
-        return <DifficultySelection role={selectedRoleTitle} onSelectDifficulty={handleDifficultySelect} />
-      case "generating": // <-- New case for the loading screen
+        return <DifficultySelection role={settings.job_role} onSelectDifficulty={handleDifficultySelect} />
+      case "generating":
         return <GeneratingQuestions />;
+      case "guidelines":
+        return <Guidelines role={settings.job_role} settings={settings} onStartTest={handleStartTest} />
       case "interview":
-        // Ensure we don't render the interview session before questions are loaded
         return questions.length > 0 ? (
           <InterviewSession
             questions={questions}
@@ -139,7 +132,7 @@ export default function MockInterviewPage() {
             onComplete={handleInterviewComplete}
             onEvaluateAnswer={handleEvaluateAnswer}
           />
-        ) : <GeneratingQuestions />; // Show loader as a fallback
+        ) : <GeneratingQuestions />;
       case "results":
         return interviewResults && <FeedbackDisplay results={interviewResults} onRestartInterview={handleRestart} />
       default:
@@ -175,7 +168,7 @@ export default function MockInterviewPage() {
           </div>
         </div>
       </div>
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{renderCurrentStep()}</main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{renderCurrentStep()}</main>
     </div>
   )
 }
