@@ -37,7 +37,7 @@ export default function MockInterviewPage() {
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
-  
+
   const handleRoleSelect = (role: string) => {
     setSettings((prev) => ({ ...prev, job_role: role }))
     setCurrentStep("difficulty")
@@ -61,7 +61,7 @@ export default function MockInterviewPage() {
     } catch (error) {
       console.error("Failed to generate questions:", error);
       alert("There was an error generating questions from the AI. Please try again.");
-      setCurrentStep("difficulty"); 
+      setCurrentStep("difficulty");
     }
   }
   

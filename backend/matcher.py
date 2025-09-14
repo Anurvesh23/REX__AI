@@ -107,9 +107,9 @@ def score_resume_vs_jd(resume_path, jd_text, weights=None, required_years=0, top
         for (r_idx, score) in hits:
             pair_list.append((jd_chunks[int(j_idx)][:512], resume_chunks[int(r_idx)][:512]))
             pair_indices.append((j_idx, r_idx))
-
+    
     cross_scores = CROSS_ENCODER.predict(pair_list, show_progress_bar=False) if pair_list else []
-
+    
     per_resume_scores = defaultdict(list)
     per_jd_scores = defaultdict(list)
     for (j_idx, r_idx), cs in zip(pair_indices, cross_scores):
@@ -141,7 +141,7 @@ def score_resume_vs_jd(resume_path, jd_text, weights=None, required_years=0, top
         })
         if len(matches) >= 8:
             break
-
+    
     missing_skills = list(set(jd_skills) - set(resume_skills))
     missing_skill_lines = suggest_missing_skills(jd_skills, resume_skills)
     bullet_suggestions = generate_bullet_rewrites(missing_skills)
