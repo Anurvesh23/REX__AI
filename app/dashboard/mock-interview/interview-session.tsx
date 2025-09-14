@@ -28,7 +28,6 @@ interface Answer {
   time_taken: number
 }
 
-// Corrected interface: onEvaluateAnswer is removed
 interface InterviewSessionProps {
   questions: Question[]
   settings: any

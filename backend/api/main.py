@@ -22,7 +22,8 @@ try:
 except Exception as e:
     print(f"FATAL: Error configuring Gemini AI. Please check your GOOGLE_API_KEY. Error: {e}")
 # -------------------------
-
+# Add this line for debugging
+print(f"--- Is Google API Key loaded? {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'} ---")
 # Add the parent directory to the system path to allow module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from matcher import score_resume_vs_jd

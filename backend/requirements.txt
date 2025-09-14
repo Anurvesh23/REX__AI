@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+google-generativeai
+python-multipart
+fpdf
+spacy
+sentence-transformers
+faiss-cpu
+numpy
+docx2txt
+PyMuPDF
+pytesseract
+Pillow
