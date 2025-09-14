@@ -37,20 +37,18 @@ export default function MockInterviewPage() {
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
-
+  
   const handleRoleSelect = (role: string) => {
     setSettings((prev) => ({ ...prev, job_role: role }))
     setCurrentStep("difficulty")
   }
 
   const handleDifficultySelectAndStart = async (difficulty: "easy" | "medium" | "hard") => {
-    // This function is now called when a difficulty is selected.
     const currentSettings = { ...settings, difficulty };
     setSettings(currentSettings);
     setCurrentStep("generating");
 
     try {
-      // It immediately triggers the POST request.
       const data = await startInterview(currentSettings.job_role, difficulty, currentSettings.num_questions);
       if (data.questions && data.questions.length > 0) {
         setQuestions(data.questions);
@@ -61,7 +59,7 @@ export default function MockInterviewPage() {
     } catch (error) {
       console.error("Failed to generate questions:", error);
       alert("There was an error generating questions from the AI. Please try again.");
-      setCurrentStep("difficulty");
+      setCurrentStep("difficulty"); 
     }
   }
   
