@@ -114,7 +114,6 @@ export default function MockInterviewPage() {
             questions={questions}
             settings={settings}
             onComplete={handleInterviewComplete}
-            // The onEvaluateAnswer prop is now correctly removed
           />
         ) : <GeneratingQuestions />;
       case "results":

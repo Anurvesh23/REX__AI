@@ -28,11 +28,11 @@ interface Answer {
   time_taken: number
 }
 
+// Corrected interface: onEvaluateAnswer is removed
 interface InterviewSessionProps {
   questions: Question[]
   settings: any
   onComplete: (answers: Answer[]) => void
-  // The onEvaluateAnswer prop is now removed from here as well
 }
 
 export default function InterviewSession({ questions, settings, onComplete }: InterviewSessionProps) {
