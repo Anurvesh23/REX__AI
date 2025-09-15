@@ -12,6 +12,7 @@ import { Brain, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/lib/supabase" // Import supabase client
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -23,7 +24,7 @@ export default function SignUpPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { signUp, signInWithGoogle } = useAuth()
+  const { signInWithGoogle } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,15 +35,37 @@ export default function SignUpPage() {
       setIsLoading(false)
       return
     }
+    
+    // Use the supabase client directly for sign-up to get user data
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.name,
+        },
+      },
+    })
 
-    try {
-      await signUp(formData.email, formData.password, formData.name)
-      router.push("/dashboard")
-    } catch (error: any) {
+    if (error) {
       alert(error.message)
-    } finally {
       setIsLoading(false)
+      return
     }
+
+    // Check if the user object exists and email confirmation is required
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+        // This condition suggests email confirmation is pending.
+        alert("Sign-up successful! Please check your email to verify your account before signing in.")
+        router.push("/auth/signin")
+    } else if (data.user) {
+        // For cases where email confirmation might be off or for social providers
+        router.push("/dashboard")
+    } else {
+        alert("An unknown error occurred during sign-up. Please try again.")
+    }
+
+    setIsLoading(false)
   }
 
   const handleGoogleSignIn = async () => {
