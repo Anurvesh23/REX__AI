@@ -88,7 +88,9 @@ export default function ResumeAnalyzerPage() {
     }
   }
 
-  const handleSaveAnalysis = async () => {
+  // app/dashboard/resume-analyzer/page.tsx
+
+const handleSaveAnalysis = async () => {
     if (!analysisResult) {
       alert("No analysis result to save.");
       return;

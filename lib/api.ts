@@ -84,7 +84,9 @@ Best regards,
 John Doe`
   },
 
-  async saveAnalysis(userId: string, analysisData: Partial<Resume>) {
+  // lib/api.ts
+
+async saveAnalysis(userId: string, analysisData: Partial<Resume>) {
     const { data, error } = await supabase
       .from("resumes")
       .insert({
@@ -171,7 +173,9 @@ export const interviewAPI = {
     return { score, feedback }
   },
 
-  async saveInterview(userId: string, interviewData: Partial<Interview>) {
+  // lib/api.ts
+
+async saveInterview(userId: string, interviewData: Partial<Interview>) {
     const { data, error } = await supabase
       .from("interviews")
       .insert({

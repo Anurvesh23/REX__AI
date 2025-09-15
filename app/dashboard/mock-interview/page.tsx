@@ -12,7 +12,7 @@ import GeneratingQuestions from "./generating-questions"
 import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
-import { startInterview } from "@/lib/api"
+import { startInterview, interviewAPI } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 
 interface InterviewSettings {
@@ -93,6 +93,11 @@ export default function MockInterviewPage() {
       duration_minutes: Math.round(
         answers.reduce((acc, a) => acc + a.time_taken, 0) / 60
       ),
+    }
+
+    // Save the interview results to Supabase
+    if (user) {
+      interviewAPI.saveInterview(user.id, results);
     }
 
     setInterviewResults(results)
