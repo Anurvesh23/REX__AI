@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2 } from "lucide-react"
 
 export default function OnboardingPage() {
-  const { user, loading } = useAuth() // Get loading state
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -24,26 +24,27 @@ export default function OnboardingPage() {
 
       if (error) throw error
       
-      // Use router.push to navigate after state update
-      router.push("/dashboard")
+      // A full page reload ensures the AuthProvider re-evaluates the user's
+      // onboarding status before redirecting to the dashboard.
+      window.location.href = "/dashboard";
       
     } catch (error: any) {
       alert(`An error occurred: ${error.message}`)
-    } finally {
-        setIsSubmitting(false)
+      setIsSubmitting(false)
     }
   }
   
-  // Display a loader while the auth state is being confirmed
+  // Show a loader while auth state is being confirmed.
+  // This prevents rendering the card before user data is available.
   if (loading || !user) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
-            <Loader2 className="animate-spin h-8 w-8" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+            <Loader2 className="animate-spin h-8 w-8 text-white" />
         </div>
     )
   }
 
-  // Only render the card when the user object is available
+  // This content will only render if `loading` is false AND `user` is not null.
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       <Card className="w-full max-w-md shadow-2xl">
@@ -53,12 +54,12 @@ export default function OnboardingPage() {
         </CardHeader>
         <CardContent className="text-center">
           <p className="mb-6">
-            Welcome, <strong>{user?.user_metadata?.full_name || user?.email}</strong>!
+            Welcome, <strong>{user.full_name || user.email}</strong>!
             <br />
             Click the button below to complete your registration.
           </p>
           <Button onClick={handleCompleteOnboarding} disabled={isSubmitting} className="w-full">
-            {isSubmitting ? <Loader2 className="animate-spin" /> : "Complete Sign Up"}
+            {isSubmitting ? <Loader2 className="animate-spin" /> : "Complete Sign Up & Go to Dashboard"}
           </Button>
         </CardContent>
       </Card>
