@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Brain, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -23,6 +23,7 @@ export default function SignUpPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { signUp, signInWithGoogle } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,22 +35,22 @@ export default function SignUpPage() {
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: { data: { full_name: formData.name } }
-    })
-    if (error) {
-      alert(error.message)
-      setIsLoading(false)
-      return
-    }
-    if (data.user) {
+    try {
+      await signUp(formData.email, formData.password, formData.name)
       router.push("/dashboard")
-    } else {
-      alert("Check your email to confirm your account.")
+    } catch (error: any) {
+      alert(error.message)
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle()
+    } catch (error: any) {
+      alert(error.message)
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,7 +167,7 @@ export default function SignUpPage() {
                 </div>
               </div>
 
-              <Button variant="outline" type="button" className="w-full bg-transparent">
+              <Button variant="outline" type="button" className="w-full bg-transparent" onClick={handleGoogleSignIn}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
