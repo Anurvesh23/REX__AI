@@ -10,25 +10,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
 
   useEffect(() => {
-    // Wait until the authentication state is fully loaded
-    if (!loading) {
-      // If there is no user, they should be sent to the sign-in page.
-      if (!user) {
-        router.replace("/auth/signin")
-        return
-      }
-
-      // If the user exists but hasn't completed onboarding,
-      // they should be sent to the onboarding page.
-      if (!user.has_completed_onboarding) {
-        router.replace("/auth/onboarding")
-      }
+    // After loading, if there's no user, redirect to the sign-in page.
+    if (!loading && !user) {
+      router.replace("/auth/signin")
     }
   }, [user, loading, router])
 
-  // While loading or if the user is not onboarded yet, show a loader.
-  // This prevents the dashboard content from flashing before the redirect happens.
-  if (loading || !user || !user.has_completed_onboarding) {
+  // While loading or before the redirect happens, show a loader.
+  if (loading || !user) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-slate-900">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
@@ -36,6 +25,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     )
   }
 
-  // If the user is loaded and has completed onboarding, render the dashboard content.
+  // If a user is logged in, show the dashboard content.
   return <>{children}</>
 }

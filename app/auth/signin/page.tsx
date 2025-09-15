@@ -1,14 +1,12 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Brain, Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { Brain, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
@@ -21,18 +19,24 @@ export default function SignInPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { signIn, signInWithGoogle } = useAuth()
+  const { user, loading, signIn, signInWithGoogle } = useAuth()
+
+  // This effect will trigger a redirect once the user state is confirmed
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/dashboard")
+    }
+  }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     try {
       await signIn(formData.email, formData.password)
-      router.push("/dashboard")
+      // The redirect is now handled by the useEffect above
     } catch (error: any) {
       alert(error.message)
-    } finally {
-      setIsLoading(false)
+      setIsLoading(false) // Stop loading on error
     }
   }
 
@@ -51,6 +55,17 @@ export default function SignInPage() {
     }))
   }
 
+  // If the hook is checking the auth state, or if a user is already
+  // logged in (and about to be redirected), show a loader.
+  if (loading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  // Only show the sign-in form if loading is done and there is no user
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <motion.div

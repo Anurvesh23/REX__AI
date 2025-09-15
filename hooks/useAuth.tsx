@@ -5,15 +5,8 @@ import { useState, useEffect, createContext, useContext } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
-// Define a more detailed user profile type
-export interface UserProfile extends User {
-  full_name: string
-  avatar_url: string
-  has_completed_onboarding: boolean
-}
-
 interface AuthContextType {
-  user: UserProfile | null
+  user: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, fullName: string) => Promise<void>
@@ -32,37 +25,15 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check the session on initial load
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        setUser({ ...session.user, ...userProfile })
-      }
-      setLoading(false)
-    })
-
-    // Listen for auth changes
+    // This listener handles the initial session and all subsequent auth events.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        setUser({ ...session.user, ...userProfile })
-      } else {
-        setUser(null)
-      }
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null)
       setLoading(false)
     })
 
