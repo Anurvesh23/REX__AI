@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,13 +20,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const router = useRouter()
-  const { user, loading, signIn, signInWithGoogle } = useAuth()
-
-  useEffect(() => {
-    if (!loading && user) {
-      router.push("/dashboard")
-    }
-  }, [user, loading, router])
+  const { user, loading, signIn, signOut, signInWithGoogle } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,10 +28,9 @@ export default function SignInPage() {
     setErrorMessage(null)
     try {
       await signIn(formData.email, formData.password)
-      // Redirect is handled by the useEffect
+      router.push("/dashboard") // Redirect after successful sign-in
     } catch (error: any) {
       setErrorMessage(error.message)
-    } finally {
       setIsLoading(false)
     }
   }
@@ -57,7 +50,8 @@ export default function SignInPage() {
     }))
   }
 
-  if (loading || user) {
+  // Show a loader while checking the authentication status
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -65,6 +59,38 @@ export default function SignInPage() {
     )
   }
 
+  // If a user is already logged in, show options instead of the form
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="w-full max-w-md"
+        >
+          <Card className="shadow-2xl">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl">You're already signed in</CardTitle>
+              <CardDescription>
+                You are logged in as <span className="font-medium">{user.email}</span>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button onClick={() => router.push("/dashboard")} className="w-full">
+                Go to Dashboard
+              </Button>
+              <Button variant="outline" onClick={signOut} className="w-full">
+                Sign out to use a different account
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // If no user is logged in, show the sign-in form as intended
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <motion.div
@@ -105,7 +131,6 @@ export default function SignInPage() {
                   />
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -129,7 +154,6 @@ export default function SignInPage() {
                   </button>
                 </div>
               </div>
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Label className="text-sm flex items-center space-x-2">
@@ -141,12 +165,10 @@ export default function SignInPage() {
                   Forgot password?
                 </Link>
               </div>
-
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
               </Button>
-
-              <div className="relative">
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
                 </div>
@@ -154,7 +176,6 @@ export default function SignInPage() {
                   <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                 </div>
               </div>
-
               <Button variant="outline" type="button" className="w-full bg-transparent" onClick={handleGoogleSignIn}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
@@ -177,7 +198,6 @@ export default function SignInPage() {
                 Continue with Google
               </Button>
             </form>
-
             <div className="mt-6 text-center text-sm">
               <span className="text-slate-600 dark:text-slate-400">Don't have an account? </span>
               <Link href="/auth/signup" className="text-blue-600 hover:underline font-medium">
