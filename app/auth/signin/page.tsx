@@ -18,10 +18,10 @@ export default function SignInPage() {
     password: "",
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const router = useRouter()
   const { user, loading, signIn, signInWithGoogle } = useAuth()
 
-  // This effect will trigger a redirect once the user state is confirmed
   useEffect(() => {
     if (!loading && user) {
       router.push("/dashboard")
@@ -31,12 +31,14 @@ export default function SignInPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setErrorMessage(null)
     try {
       await signIn(formData.email, formData.password)
-      // The redirect is now handled by the useEffect above
+      // Redirect is handled by the useEffect
     } catch (error: any) {
-      alert(error.message)
-      setIsLoading(false) // Stop loading on error
+      setErrorMessage(error.message)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -44,7 +46,7 @@ export default function SignInPage() {
     try {
       await signInWithGoogle()
     } catch (error: any) {
-      alert(error.message)
+      setErrorMessage(error.message)
     }
   }
 
@@ -55,8 +57,6 @@ export default function SignInPage() {
     }))
   }
 
-  // If the hook is checking the auth state, or if a user is already
-  // logged in (and about to be redirected), show a loader.
   if (loading || user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -65,7 +65,6 @@ export default function SignInPage() {
     )
   }
 
-  // Only show the sign-in form if loading is done and there is no user
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <motion.div
@@ -85,6 +84,11 @@ export default function SignInPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                  <span className="block sm:inline">{errorMessage}</span>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -139,7 +143,7 @@ export default function SignInPage() {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing In..." : "Sign In"}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
               </Button>
 
               <div className="relative">

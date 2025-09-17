@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Brain, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
+import { Brain, Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
-import { supabase } from "@/lib/supabase" // Import supabase client
+import { supabase } from "@/lib/supabase"
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -23,20 +23,21 @@ export default function SignUpPage() {
     confirmPassword: "",
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const router = useRouter()
   const { signInWithGoogle } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setErrorMessage(null)
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match")
+      setErrorMessage("Passwords do not match")
       setIsLoading(false)
       return
     }
     
-    // Use the supabase client directly for sign-up to get user data
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -48,21 +49,12 @@ export default function SignUpPage() {
     })
 
     if (error) {
-      alert(error.message)
-      setIsLoading(false)
-      return
-    }
-
-    // Check if the user object exists and email confirmation is required
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
-        // This condition suggests email confirmation is pending.
-        alert("Sign-up successful! Please check your email to verify your account before signing in.")
-        router.push("/auth/signin")
+      setErrorMessage(error.message)
     } else if (data.user) {
-        // For cases where email confirmation might be off or for social providers
-        router.push("/dashboard")
+      alert("Sign-up successful! Please check your email to verify your account.")
+      router.push("/auth/signin")
     } else {
-        alert("An unknown error occurred during sign-up. Please try again.")
+      setErrorMessage("An unknown error occurred during sign-up. Please try again.")
     }
 
     setIsLoading(false)
@@ -72,7 +64,7 @@ export default function SignUpPage() {
     try {
       await signInWithGoogle()
     } catch (error: any) {
-      alert(error.message)
+      setErrorMessage(error.message)
     }
   }
 
@@ -102,6 +94,11 @@ export default function SignUpPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                  <span className="block sm:inline">{errorMessage}</span>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <div className="relative">
@@ -178,7 +175,7 @@ export default function SignUpPage() {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Create Account"}
               </Button>
 
               <div className="relative">
