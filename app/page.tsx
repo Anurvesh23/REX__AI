@@ -28,16 +28,22 @@ export default function LandingPage() {
       color: "bg-blue-500",
     },
     {
+      icon: MessageSquare,
+      title: "Mock Test",
+      description: "Practice with AI-generated questions and receive detailed feedback on your responses.",
+      color: "bg-green-500",
+    },
+    {
       icon: GraduationCap,
       title: "Mock Interview",
       description: "Practice with company-specific and role-specific interview simulations.",
       color: "bg-orange-500",
     },
     {
-      icon: MessageSquare,
-      title: "Mock Test",
-      description: "Practice with AI-generated questions and receive detailed feedback on your responses",
-      color: "bg-green-500",
+      icon: Search,
+      title: "Job Search",
+      description: "Discover personalized job matches based on your resume and preferences.",
+      color: "bg-purple-500",
     },
   ]
 
@@ -231,7 +237,7 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
