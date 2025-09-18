@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import { ArrowRight, Grid, Rows } from "lucide-react"
+import { ArrowRight, Grid, Rows, HelpCircle, Clock, Star } from "lucide-react"
 
 interface RoleSelectionProps {
   onSelectRole: (role: string) => void
@@ -17,99 +17,103 @@ const roles = {
   Tech: [
     {
       title: "Software Developer",
-      description: "Designs, codes, and maintains software solutions.",
       image: "/images/roles/software-developer.png",
+      questions: 25,
+      duration: 45,
+      marks: 100,
     },
     {
       title: "Data Analyst",
-      description: "Derives insights and trends from complex data sets.",
       image: "/images/roles/data-analyst.png",
+      questions: 30,
+      duration: 60,
+      marks: 100,
     },
     {
       title: "Backend Developer",
-      description: "Develops and maintains server-side applications.",
       image: "/images/roles/backend-developer.png",
+      questions: 25,
+      duration: 45,
+      marks: 100,
     },
     {
       title: "Frontend Developer",
-      description: "Creates responsive, user-centric web interfaces.",
       image: "/images/roles/frontend-developer.png",
+      questions: 25,
+      duration: 45,
+      marks: 100,
     },
     {
       title: "QA Engineer",
-      description: "Ensures software quality through rigorous testing.",
       image: "/images/roles/qa-engineer.png",
+      questions: 20,
+      duration: 30,
+      marks: 100,
     },
     {
       title: "Cyber Security Engineer",
-      description: "Secures systems and networks from cyber threats.",
       image: "/images/roles/cyber-security.png",
+      questions: 30,
+      duration: 45,
+      marks: 100,
     },
     {
       title: "Machine Learning Engineer",
-      description: "Builds and deploys machine learning models.",
       image: "/images/roles/machine-learning-engineer.png",
-    },
-    {
-      title: "DevOps Engineer",
-      description: "Manages infrastructure and automates deployment.",
-      image: "/images/roles/devops-engineer.png",
-    },
-    {
-      title: "Cloud Engineer",
-      description: "Manages and maintains cloud infrastructure.",
-      image: "/images/roles/cloud-engineer.png",
-    },
-    {
-      title: "Cloud Architect",
-      description: "Designs and implements cloud solutions.",
-      image: "/images/roles/cloud-architect.png",
+      questions: 25,
+      duration: 60,
+      marks: 100,
     },
   ],
   Management: [
     {
       title: "Product Manager",
-      description: "Defines product vision and manages the product lifecycle.",
       image: "/images/roles/product-manager.jpg",
+      questions: 20,
+      duration: 40,
+      marks: 100,
     },
     {
       title: "HR Manager",
-      description: "Oversees recruitment, employee relations, and HR policies.",
       image: "/images/roles/hr-manager.jpg",
+      questions: 25,
+      duration: 30,
+      marks: 100,
     },
     {
       title: "Business Analyst",
-      description: "Analyzes business processes and recommends improvements.",
       image: "/images/roles/business-analyst.jpg",
-    },
-    {
-      title: "Marketing Manager",
-      description: "Develops and executes marketing strategies to drive growth.",
-      image: "/images/roles/marketing-manager.jpg",
+      questions: 30,
+      duration: 50,
+      marks: 100,
     },
   ],
   General: [
     {
       title: "Content Writer",
-      description: "Creates compelling content for various digital platforms.",
       image: "/images/roles/content-writer.jpg",
+      questions: 20,
+      duration: 30,
+      marks: 100,
     },
     {
       title: "Graphic Designer",
-      description: "Designs visual assets for branding and marketing materials.",
       image: "/images/roles/graphic-designer.jpg",
+      questions: 15,
+      duration: 45,
+      marks: 100,
     },
   ],
 }
 
-// Reusable Role Card Component to keep the code DRY
-const RoleCard = ({ role, onSelectRole }: { role: { title: string; image: string; description: string }, onSelectRole: (role: string) => void }) => (
+// Reusable Role Card Component
+const RoleCard = ({ role, onSelectRole }: { role: any, onSelectRole: (role: string) => void }) => (
     <Card
-        className="group flex flex-col h-full overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+        className="group flex flex-col h-full overflow-hidden hover:shadow-xl transition-shadow duration-300"
         onClick={() => onSelectRole(role.title)}
     >
         <CardContent className="p-0 flex flex-col flex-grow">
-            <div className="relative w-full aspect-video">
+            <div className="relative w-full aspect-[16/9]">
                 <Image
                     src={role.image}
                     alt={role.title}
@@ -118,14 +122,20 @@ const RoleCard = ({ role, onSelectRole }: { role: { title: string; image: string
                 />
             </div>
             <div className="p-4 flex flex-col flex-grow">
-                <h3 className="text-lg font-semibold mb-1">{role.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 flex-grow min-h-[40px]">
-                    {role.description}
-                </p>
-                <div className="mt-4 pt-4 border-t flex justify-between items-center w-full">
-                    <span className="text-sm font-medium text-blue-600">Start Test</span>
-                    <ArrowRight className="h-4 w-4 text-blue-600 transition-transform duration-300 group-hover:translate-x-1" />
+                <h3 className="text-lg font-semibold mb-2 flex-grow">{role.title}</h3>
+                <div className="flex items-center justify-between text-sm text-muted-foreground my-3 border-t border-b py-3">
+                    <div className="flex items-center gap-1.5">
+                        <HelpCircle className="h-4 w-4" />
+                        <span>{role.questions} Questions</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" />
+                        <span>{role.duration} Mins</span>
+                    </div>
                 </div>
+                 <Button className="w-full mt-2">
+                    Start Now
+                </Button>
             </div>
         </CardContent>
     </Card>
@@ -133,7 +143,7 @@ const RoleCard = ({ role, onSelectRole }: { role: { title: string; image: string
 
 
 export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
-  const [isGridView, setIsGridView] = useState(false);
+  const [isGridView, setIsGridView] = useState(true); // Default to grid view
 
   return (
     <motion.div
@@ -145,8 +155,7 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
       <div className="text-center">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">AI-Powered Mock Tests</h1>
         <p className="text-lg text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
-          Master your concepts with AI-Powered full length mock tests for 360° preparation. Select your desired role to
-          begin.
+          Practice and prepare to get hired by top companies. Select your desired role to begin.
         </p>
       </div>
 
@@ -167,7 +176,7 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
           <TabsContent key={category} value={category}>
             {isGridView ? (
                 <motion.div
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-7xl mx-auto"
+                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6 max-w-7xl mx-auto"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}

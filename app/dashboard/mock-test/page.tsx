@@ -28,7 +28,7 @@ interface InterviewSettings {
 
 type InterviewStep = "selection" | "settings" | "generating" | "guidelines" | "interview" | "results";
 
-export default function MockTestPage() {
+export default function MockInterviewPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
@@ -102,6 +102,7 @@ export default function MockTestPage() {
       ),
     }
 
+    // Save the interview results to Supabase
     if (user) {
       interviewAPI.saveInterview(user.id, results);
     }
