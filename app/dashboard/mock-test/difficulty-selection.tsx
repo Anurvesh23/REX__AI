@@ -1,35 +1,19 @@
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { BarChart, BarChart2, BarChart3, Zap } from "lucide-react"
+import { motion } from "framer-motion";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Zap, Shield, BarChart } from "lucide-react";
 
 interface DifficultySelectionProps {
-  role: string
-  onSelectDifficulty: (difficulty: "easy" | "medium" | "hard") => void
+  role: string;
+  onSelectDifficulty: (difficulty: "easy" | "medium" | "hard") => void;
 }
 
 const difficulties = [
-  {
-    level: "easy" as const,
-    title: "Easy",
-    description: "Ideal for beginners. Focuses on fundamental concepts and basic questions.",
-    icon: BarChart,
-  },
-  {
-    level: "medium" as const,
-    title: "Medium",
-    description: "A balanced challenge for most candidates. Covers a mix of core and advanced topics.",
-    icon: BarChart2,
-  },
-  {
-    level: "hard" as const,
-    title: "Hard",
-    description: "For experienced professionals. Involves complex scenarios and in-depth questions.",
-    icon: BarChart3,
-  },
-]
+    { level: "easy", title: "Easy", description: "Fundamental concepts and basic questions.", icon: Shield },
+    { level: "medium", title: "Medium", description: "Practical scenarios and intermediate topics.", icon: BarChart },
+    { level: "hard", title: "Hard", description: "Complex problems and advanced concepts.", icon: Zap },
+];
 
 export default function DifficultySelection({ role, onSelectDifficulty }: DifficultySelectionProps) {
   return (
@@ -37,47 +21,27 @@ export default function DifficultySelection({ role, onSelectDifficulty }: Diffic
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8 }}
-      className="space-y-8"
+      className="max-w-4xl mx-auto text-center"
     >
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Choose Your Challenge</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-300">
-          You have selected the role: <span className="font-semibold text-blue-600">{role}</span>
-        </p>
-        <p className="text-md text-slate-500 dark:text-slate-400 mt-1">
-          Now, select the difficulty level for your mock interview.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-        {difficulties.map((diff, index) => (
-          <motion.div
-            key={diff.level}
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
+      <h1 className="text-3xl font-bold mb-2">Select Difficulty Level</h1>
+      <p className="text-lg text-muted-foreground mb-8">
+        You have selected the <span className="font-semibold text-primary">{role}</span> role. Now, choose the test difficulty.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {difficulties.map((d) => (
+          <Card
+            key={d.level}
+            className="cursor-pointer hover:shadow-lg hover:border-primary transition-all"
+            onClick={() => onSelectDifficulty(d.level as "easy" | "medium" | "hard")}
           >
-            <Card
-              className="group h-full hover:shadow-xl hover:border-blue-500 transition-all duration-300 cursor-pointer flex flex-col"
-              onClick={() => onSelectDifficulty(diff.level)}
-            >
-              <CardHeader className="items-center text-center">
-                <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
-                  <diff.icon className="h-8 w-8 text-blue-600" />
-                </div>
-                <CardTitle>{diff.title}</CardTitle>
-                <CardDescription>{diff.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="mt-auto">
-                <Button className="w-full">
-                  <Zap className="h-4 w-4 mr-2" />
-                  Select {diff.title}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+            <CardHeader>
+                <d.icon className="h-10 w-10 mx-auto mb-4 text-primary" />
+                <CardTitle>{d.title}</CardTitle>
+                <CardDescription>{d.description}</CardDescription>
+            </CardHeader>
+          </Card>
         ))}
       </div>
     </motion.div>
-  )
+  );
 }

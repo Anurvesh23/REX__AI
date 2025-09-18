@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { MessageSquare, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import RoleSelection from "./role-selection"
+import DifficultySelection from "./difficulty-selection"
 import GeneratingQuestions from "./generating-questions"
 import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
@@ -22,13 +23,13 @@ interface InterviewSettings {
   time_limit: boolean;
 }
 
-type InterviewStep = "selection" | "generating" | "guidelines" | "interview" | "results";
+type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "results";
 
 export default function MockTestPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
-    num_questions: 20, // Default number of questions is now 20
+    num_questions: 20,
     difficulty: "medium",
     job_role: "",
     time_per_question: 1.5,
@@ -37,8 +38,13 @@ export default function MockTestPage() {
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
   
-  const handleRoleSelect = async (role: string) => {
-    const newSettings = { ...settings, job_role: role };
+  const handleRoleSelect = (role: string) => {
+    setSettings((prev) => ({ ...prev, job_role: role }));
+    setCurrentStep("difficulty");
+  }
+  
+  const handleDifficultySelect = async (difficulty: "easy" | "medium" | "hard") => {
+    const newSettings = { ...settings, difficulty };
     setSettings(newSettings);
     setCurrentStep("generating");
 
@@ -108,6 +114,8 @@ export default function MockTestPage() {
     switch (currentStep) {
       case "selection":
         return <RoleSelection onSelectRole={handleRoleSelect} />
+      case "difficulty":
+        return <DifficultySelection role={settings.job_role} onSelectDifficulty={handleDifficultySelect} />
       case "generating":
         return <GeneratingQuestions />;
       case "guidelines":
