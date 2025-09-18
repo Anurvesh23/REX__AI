@@ -1,10 +1,11 @@
+// app/dashboard/mock-interview/_components/interview-card.tsx
 "use client"
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { HelpCircle, Clock, Star } from "lucide-react";
+import { HelpCircle, Clock } from "lucide-react";
 
 interface InterviewCardProps {
     title: string;
@@ -12,9 +13,10 @@ interface InterviewCardProps {
     questions: number;
     duration: number;
     image: string;
+    onStart: () => void;
 }
 
-export default function InterviewCard({ title, company, questions, duration, image }: InterviewCardProps) {
+export default function InterviewCard({ title, company, questions, duration, image, onStart }: InterviewCardProps) {
     return (
         <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
             <CardContent className="p-0">
@@ -34,7 +36,7 @@ export default function InterviewCard({ title, company, questions, duration, ima
                             <span>{duration} Mins</span>
                         </div>
                     </div>
-                     <Button className="w-full">Start Now</Button>
+                     <Button className="w-full" onClick={onStart}>Start Now</Button>
                 </div>
             </CardContent>
         </Card>
