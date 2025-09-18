@@ -28,7 +28,7 @@ interface InterviewSettings {
 
 type InterviewStep = "selection" | "settings" | "generating" | "guidelines" | "interview" | "results";
 
-export default function MockInterviewPage() {
+export default function MockTestPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
@@ -102,7 +102,6 @@ export default function MockInterviewPage() {
       ),
     }
 
-    // Save the interview results to Supabase
     if (user) {
       interviewAPI.saveInterview(user.id, results);
     }
@@ -166,7 +165,7 @@ export default function MockInterviewPage() {
               </Link>
               <div className="flex items-center space-x-3">
                 <MessageSquare className="h-8 w-8 text-green-600" />
-                <span className="text-2xl font-bold text-slate-900 dark:text-white">AI Skill Test</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">AI Mock Test</span>
               </div>
             </div>
             <div className="flex items-center space-x-4">

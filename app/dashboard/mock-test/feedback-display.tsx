@@ -72,7 +72,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
         <CardHeader className="text-center">
           <CardTitle className="text-3xl flex items-center justify-center gap-3">
             <Trophy className="h-8 w-8 text-yellow-500" />
-            Interview Complete!
+            Mock Test Complete!
           </CardTitle>
         </CardHeader>
         <CardContent>

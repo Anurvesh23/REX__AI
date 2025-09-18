@@ -21,13 +21,13 @@ export default function ModuleSelector() {
       href: "/dashboard/resume-analyzer",
     },
     {
-      id: "mock-interview",
-      title: "Mock Interview",
-      description: "AI-powered Q&A simulation with feedback and scores",
+      id: "mock-test",
+      title: "Mock Test",
+      description: "AI-powered mock test simulation with feedback and scores",
       icon: MessageSquare,
       color: "from-green-500 to-green-600",
       features: ["AI-Generated Questions", "Real-time Feedback", "Performance Scoring", "Improvement Tips"],
-      href: "/dashboard/mock-interview",
+      href: "/dashboard/mock-test",
     },
     {
       id: "job-search",
