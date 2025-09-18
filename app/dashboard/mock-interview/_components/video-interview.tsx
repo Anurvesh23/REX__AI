@@ -7,10 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Loader2, Mic, Volume2 } from 'lucide-react';
-import { interviewAPI } from '@/lib/api'; // Assuming startInterview is here
+import { ChevronLeft, ChevronRight, Loader2, Mic, Volume2, ShieldAlert } from 'lucide-react';
+import { interviewAPI } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+
+// TensorFlow.js dependencies for face and eye tracking
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-webgl';
+import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
+import { MediaPipeFaceMeshTfjsModelConfig } from '@tensorflow-models/face-landmarks-detection';
 
 interface VideoInterviewProps {
   interviewDetails: { title: string; company: string };
@@ -34,7 +40,6 @@ const getSpeechAudio = async (text: string) => {
         });
         if (!response.ok) throw new Error("Failed to generate speech");
         const data = await response.json();
-        // Assuming your backend is on localhost:8000
         return `http://localhost:8000${data.audio_url}`;
     } catch (error) {
         console.error("Error getting speech audio:", error);
@@ -52,6 +57,13 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [warnings, setWarnings] = useState(0);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
+  // Refs for motion detection
+  const modelRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
+  const baselinePosition = useRef<{ x: number; y: number } | null>(null);
+  const requestRef = useRef<number>();
 
   useEffect(() => {
     // Fetch questions when the component mounts
@@ -102,6 +114,80 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
       }
   };
 
+  const handleWarning = (message: string) => {
+    setWarningMessage(message);
+    setWarnings(prev => prev + 1);
+    setTimeout(() => setWarningMessage(null), 3000);
+  };
+
+  useEffect(() => {
+    if (warnings >= 3) {
+      onEndInterview();
+    }
+  }, [warnings, onEndInterview]);
+
+  const detectMotion = async () => {
+    if (
+      typeof userVideoRef.current !== "undefined" &&
+      userVideoRef.current !== null &&
+      userVideoRef.current.readyState === 4
+    ) {
+      const video = userVideoRef.current;
+      const face = await modelRef.current?.estimateFaces(video);
+
+      if (face && face.length > 0) {
+        const keypoints = face[0].keypoints;
+        const nose = keypoints[4]; // Using the nose as a central point
+
+        if (!baselinePosition.current) {
+          // Set baseline after a short delay
+          setTimeout(() => {
+            baselinePosition.current = { x: nose.x, y: nose.y };
+          }, 2000);
+        } else {
+          const dx = Math.abs(nose.x - baselinePosition.current.x);
+          const dy = Math.abs(nose.y - baselinePosition.current.y);
+
+          // Detect significant body movement
+          if (dx > 100 || dy > 100) {
+            handleWarning("Please stay in your seat.");
+          }
+
+          // Detect eye movement (simplified)
+          const leftEye = keypoints[33];
+          const rightEye = keypoints[263];
+          const eyeCenterX = (leftEye.x + rightEye.x) / 2;
+
+          if (Math.abs(nose.x - eyeCenterX) > 20) {
+            handleWarning("Please keep your eyes on the screen.");
+          }
+        }
+      } else {
+        handleWarning("No face detected. Please remain visible.");
+      }
+    }
+    requestRef.current = requestAnimationFrame(detectMotion);
+  };
+
+  useEffect(() => {
+    const loadModel = async () => {
+        await tf.setBackend('webgl');
+        const model = await faceLandmarksDetection.createDetector(
+            faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+            { runtime: 'tfjs', refineLandmarks: true } as MediaPipeFaceMeshTfjsModelConfig
+        );
+        modelRef.current = model;
+        requestRef.current = requestAnimationFrame(detectMotion);
+    };
+    loadModel();
+
+    return () => {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+    };
+  }, []);
+
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
@@ -131,6 +217,16 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
              <div className="absolute top-4 right-4 bg-green-500/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
                 <Mic className="h-3 w-3"/> LIVE
              </div>
+             {warningMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-500 text-black p-4 rounded-lg flex items-center gap-2"
+                >
+                  <ShieldAlert />
+                  {warningMessage} ({warnings}/3)
+                </motion.div>
+              )}
         </div>
 
         {/* AI Interviewer & Controls */}
