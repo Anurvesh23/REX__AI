@@ -167,13 +167,12 @@ def create_optimized_resume_pdf(text_content: str):
 async def start_skill_test(data: dict = Body(...)):
     role = data.get("role", "Software Developer")
     difficulty = data.get("difficulty", "Medium")
-    num_questions = data.get("num_questions", 10) # Reduced for faster demo
+    num_questions = data.get("num_questions", 10)
 
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
-        # Added a timestamp to the prompt to ensure unique questions are generated each time
         prompt = f"""
-        Generate {num_questions} completely unique and new technical and behavioral interview questions for a '{role}' role at a '{difficulty}' difficulty level.
+        Generate {num_questions} completely unique and new technical and behavioral multiple-choice interview questions for a '{role}' role at a '{difficulty}' difficulty level.
         Do not repeat questions from previous requests. Current timestamp is {time.time()} to ensure freshness.
 
         Return ONLY a valid JSON array of objects. Do not include any other text or markdown formatting like ```json.
@@ -181,8 +180,12 @@ async def start_skill_test(data: dict = Body(...)):
         {{
           "id": number,
           "question": "The question text.",
-          "category": "technical or behavioral"
+          "category": "technical or behavioral",
+          "difficulty": "{difficulty}",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correctAnswer": "The correct option string"
         }}
+        The "correctAnswer" must be one of the strings from the "options" array.
         """
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()

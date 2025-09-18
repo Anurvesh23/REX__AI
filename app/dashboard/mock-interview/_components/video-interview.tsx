@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Loader2, Mic, Volume2, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Mic, Volume2, ShieldAlert, PlayCircle } from 'lucide-react';
 import { interviewAPI } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,7 +30,6 @@ interface Question {
     category: string;
 }
 
-// A simple API call for text-to-speech
 const getSpeechAudio = async (text: string) => {
     try {
         const response = await fetch("http://localhost:8000/interview/speak/", {
@@ -47,7 +46,6 @@ const getSpeechAudio = async (text: string) => {
     }
 }
 
-
 export default function VideoInterview({ interviewDetails, userStream, onEndInterview }: VideoInterviewProps) {
   const userVideoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -59,17 +57,16 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [warnings, setWarnings] = useState(0);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState(false);
 
-  // Refs for motion detection
   const modelRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const baselinePosition = useRef<{ x: number; y: number } | null>(null);
   const requestRef = useRef<number>();
 
   useEffect(() => {
-    // Fetch questions when the component mounts
     const fetchQuestions = async () => {
       try {
-        const data = await interviewAPI.generateQuestions(interviewDetails.title, undefined, {num_questions: 10, difficulty: 'medium'});
+        const data = await interviewAPI.generateQuestions(interviewDetails.title, 'medium', {num_questions: 10});
         setQuestions(data);
       } catch (error) {
         console.error("Failed to fetch interview questions:", error);
@@ -86,15 +83,19 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
     }
   }, [userStream]);
 
-  // Effect to fetch and play audio for the current question
   useEffect(() => {
     if (questions.length > 0) {
       const currentQuestion = questions[currentQuestionIndex];
       setIsAiSpeaking(true);
+      setAudioError(false);
       getSpeechAudio(currentQuestion.question).then(audioUrl => {
         if (audioUrl && audioRef.current) {
           audioRef.current.src = audioUrl;
-          audioRef.current.play();
+          audioRef.current.play().catch(e => {
+            console.error("Audio autoplay was blocked by the browser.", e);
+            setAudioError(true); // Show a manual play button if autoplay fails
+            setIsAiSpeaking(false);
+          });
         } else {
             setIsAiSpeaking(false);
         }
@@ -102,17 +103,16 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
     }
   }, [currentQuestionIndex, questions]);
   
-  const handleNextQuestion = () => {
-      if (currentQuestionIndex < questions.length - 1) {
-          setCurrentQuestionIndex(prev => prev + 1);
-      }
+  const handleManualPlay = () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+      setAudioError(false);
+      setIsAiSpeaking(true);
+    }
   };
-
-  const handlePrevQuestion = () => {
-      if (currentQuestionIndex > 0) {
-          setCurrentQuestionIndex(prev => prev - 1);
-      }
-  };
+  
+  const handleNextQuestion = () => { if (currentQuestionIndex < questions.length - 1) setCurrentQuestionIndex(prev => prev + 1); };
+  const handlePrevQuestion = () => { if (currentQuestionIndex > 0) setCurrentQuestionIndex(prev => prev - 1); };
 
   const handleWarning = (message: string) => {
     setWarningMessage(message);
@@ -120,11 +120,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
     setTimeout(() => setWarningMessage(null), 3000);
   };
 
-  useEffect(() => {
-    if (warnings >= 3) {
-      onEndInterview();
-    }
-  }, [warnings, onEndInterview]);
+  useEffect(() => { if (warnings >= 3) onEndInterview(); }, [warnings, onEndInterview]);
 
   const detectMotion = async () => {
     if (
@@ -137,10 +133,9 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
 
       if (face && face.length > 0) {
         const keypoints = face[0].keypoints;
-        const nose = keypoints[4]; // Using the nose as a central point
+        const nose = keypoints[4]; 
 
         if (!baselinePosition.current) {
-          // Set baseline after a short delay
           setTimeout(() => {
             baselinePosition.current = { x: nose.x, y: nose.y };
           }, 2000);
@@ -148,12 +143,10 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
           const dx = Math.abs(nose.x - baselinePosition.current.x);
           const dy = Math.abs(nose.y - baselinePosition.current.y);
 
-          // Detect significant body movement
           if (dx > 100 || dy > 100) {
             handleWarning("Please stay in your seat.");
           }
 
-          // Detect eye movement (simplified)
           const leftEye = keypoints[33];
           const rightEye = keypoints[263];
           const eyeCenterX = (leftEye.x + rightEye.x) / 2;
@@ -210,14 +203,11 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
       </header>
 
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* User Video */}
         <div className="lg:col-span-2 bg-black rounded-lg flex flex-col justify-center items-center relative overflow-hidden shadow-2xl border-2 border-slate-700">
             <video ref={userVideoRef} autoPlay muted className="w-full h-full object-cover scale-x-[-1]"></video>
             <div className="absolute bottom-4 left-4 bg-black/50 px-3 py-1 rounded-md text-sm font-medium">You</div>
-             <div className="absolute top-4 right-4 bg-green-500/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                <Mic className="h-3 w-3"/> LIVE
-             </div>
-             {warningMessage && (
+            <div className="absolute top-4 right-4 bg-green-500/80 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><Mic className="h-3 w-3"/> LIVE</div>
+            {warningMessage && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -226,86 +216,60 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
                   <ShieldAlert />
                   {warningMessage} ({warnings}/3)
                 </motion.div>
-              )}
+            )}
         </div>
 
-        {/* AI Interviewer & Controls */}
         <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-lg flex flex-col relative overflow-hidden p-6 shadow-2xl">
             <div className={`absolute inset-0 transition-all duration-500 ${isAiSpeaking ? 'opacity-100' : 'opacity-0'}`}>
-                 <Image 
-                    src="/images/roles/hr-manager.jpg"
-                    alt="AI Interviewer" 
-                    layout="fill"
-                    objectFit="cover"
-                    className="opacity-20 blur-sm"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-800 via-slate-800/80 to-transparent"></div>
+                 <Image src="/images/roles/hr-manager.jpg" alt="AI Interviewer" layout="fill" objectFit="cover" className="opacity-20 blur-sm"/>
+                 <div className="absolute inset-0 bg-gradient-to-t from-slate-800 via-slate-800/80 to-transparent"></div>
             </div>
             
             <div className="relative flex-1 flex flex-col justify-end">
                 <div className="flex items-center gap-3 mb-4">
-                    <Avatar className="h-12 w-12 border-2 border-blue-400">
-                        <Image src="/images/roles/hr-manager.jpg" alt="AI" layout="fill" objectFit="cover"/>
-                    </Avatar>
+                    <Avatar className="h-12 w-12 border-2 border-blue-400"><Image src="/images/roles/hr-manager.jpg" alt="AI" layout="fill" objectFit="cover"/></Avatar>
                     <div>
                         <h2 className="font-bold text-lg">Rex AI</h2>
                         <div className={`text-sm flex items-center gap-2 transition-colors ${isAiSpeaking ? 'text-blue-400' : 'text-slate-400'}`}>
-                           {isAiSpeaking ? (
-                            <>
-                                <Volume2 className="h-4 w-4 animate-pulse" />
-                                Speaking...
-                            </>
-                           ) : "Waiting for your response"}
+                           {isAiSpeaking ? <><Volume2 className="h-4 w-4 animate-pulse" /> Speaking...</> : "Waiting for your response"}
                         </div>
                     </div>
                 </div>
 
                 <Card className="bg-black/30 backdrop-blur-sm border-slate-600 min-h-[150px] flex items-center justify-center">
                     <CardContent className="p-6 text-center">
-                        {isLoading ? (
-                           <Loader2 className="h-8 w-8 animate-spin text-slate-400"/>
-                        ) : (
-                           <motion.p 
-                                key={currentQuestion?.id || 0}
-                                className="text-xl lg:text-2xl font-medium leading-relaxed"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.5 }}
-                           >
-                            {currentQuestion?.question}
-                           </motion.p>
+                        {isLoading && <Loader2 className="h-8 w-8 animate-spin text-slate-400"/>}
+                        {audioError && !isLoading && (
+                            <Button variant="ghost" onClick={handleManualPlay} className="text-lg">
+                                <PlayCircle className="mr-2 h-6 w-6" />
+                                Click to Play Question
+                            </Button>
                         )}
+                        {!isLoading && !audioError && !isAiSpeaking && <p className="text-slate-400">Listen for the next question...</p>}
                     </CardContent>
                 </Card>
 
                 <div className="flex justify-between items-center mt-6">
                     <div>
-                        <Badge variant="outline" className="border-slate-500 text-slate-300">
-                            Question {currentQuestionIndex + 1} / {questions.length}
-                        </Badge>
-                         <Badge variant="secondary" className="ml-2 capitalize">{currentQuestion?.category}</Badge>
+                        <Badge variant="outline" className="border-slate-500 text-slate-300">Question {currentQuestionIndex + 1} / {questions.length}</Badge>
+                        <Badge variant="secondary" className="ml-2 capitalize">{currentQuestion?.category}</Badge>
                     </div>
                     <div className="flex gap-2">
-                         <Button variant="outline" size="icon" onClick={handlePrevQuestion} disabled={currentQuestionIndex === 0}>
-                            <ChevronLeft className="h-4 w-4"/>
-                        </Button>
-                         <Button variant="outline" size="icon" onClick={handleNextQuestion} disabled={currentQuestionIndex === questions.length - 1}>
-                            <ChevronRight className="h-4 w-4"/>
-                        </Button>
+                         <Button variant="outline" size="icon" onClick={handlePrevQuestion} disabled={currentQuestionIndex === 0}><ChevronLeft className="h-4 w-4"/></Button>
+                         <Button variant="outline" size="icon" onClick={handleNextQuestion} disabled={currentQuestionIndex === questions.length - 1}><ChevronRight className="h-4 w-4"/></Button>
                     </div>
                 </div>
             </div>
 
             <div className="relative pt-6 mt-6 border-t border-slate-700">
-                <Button variant="destructive" size="lg" onClick={onEndInterview} className="w-full">
-                    End Interview
-                </Button>
+                <Button variant="destructive" size="lg" onClick={onEndInterview} className="w-full">End Interview</Button>
             </div>
              <audio 
                 ref={audioRef} 
+                onPlay={() => setIsAiSpeaking(true)}
                 onEnded={() => setIsAiSpeaking(false)}
                 className="hidden"
-            />
+             />
         </div>
       </main>
     </div>

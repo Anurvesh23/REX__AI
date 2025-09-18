@@ -1,3 +1,4 @@
+// lib/api.ts
 // Call FastAPI backend for resume analysis
 export async function analyzeResumeBackend(resumeFile: File, jobDescription: string, weights = { skills: 0.35, semantic: 0.45, experience: 0.2 }, required_years = 2) {
   const formData = new FormData();
@@ -118,44 +119,32 @@ async saveAnalysis(userId: string, analysisData: Partial<Resume>) {
   },
 }
 
-// Mock Interview API (Legacy/Simulated)
+// Mock Interview API
 export const interviewAPI = {
-  async generateQuestions(jobRole: string, resumeText?: string, settings?: any) {
-    // Simulate AI question generation
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+  async generateQuestions(jobRole: string, difficulty = 'medium', settings = { num_questions: 10 }) {
+    // This now calls the actual backend instead of returning mock data.
+    const response = await fetch("http://localhost:8000/interview/start/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            role: jobRole,
+            difficulty: difficulty,
+            num_questions: settings.num_questions,
+        }),
+    });
 
-    const technicalQuestions = [
-      "Explain the difference between let, const, and var in JavaScript.",
-      "How would you optimize a React application for better performance?",
-      "Describe your experience with RESTful APIs and how you handle errors.",
-      "What is your approach to testing in web applications?",
-      "How do you handle state management in large React applications?",
-    ]
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Backend Error:", errorText);
+        throw new Error("Failed to generate questions from the backend.");
+    }
 
-    const behavioralQuestions = [
-      "Tell me about a challenging project you worked on and how you overcame obstacles.",
-      "Describe a time when you had to work with a difficult team member.",
-      "How do you prioritize tasks when working on multiple projects?",
-      "Tell me about a time you made a mistake and how you handled it.",
-      "Where do you see yourself in your career in the next 5 years?",
-    ]
-
-    const questions = [
-      ...technicalQuestions.slice(0, 5).map((q, i) => ({
-        id: i + 1,
-        question: q,
-        category: "technical",
-        difficulty: "medium",
-      })),
-      ...behavioralQuestions.slice(0, 5).map((q, i) => ({
-        id: i + 6,
-        question: q,
-        category: "behavioral",
-        difficulty: "medium",
-      })),
-    ]
-
-    return questions
+    const data = await response.json();
+    if (!data.questions) {
+        throw new Error("Backend did not return questions in the expected format.");
+    }
+    
+    return data.questions;
   },
 
   async evaluateAnswer(question: string, answer: string) {
@@ -173,9 +162,7 @@ export const interviewAPI = {
     return { score, feedback }
   },
 
-  // lib/api.ts
-
-async saveInterview(userId: string, interviewData: Partial<Interview>) {
+  async saveInterview(userId: string, interviewData: Partial<Interview>) {
     const { data, error } = await supabase
       .from("interviews")
       .insert({
