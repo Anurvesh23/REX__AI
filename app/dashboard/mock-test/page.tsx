@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { MessageSquare, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import RoleSelection from "./role-selection"
-import SettingsPanel from "./settings-panel"
 import GeneratingQuestions from "./generating-questions"
 import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
@@ -17,18 +16,15 @@ import { useAuth } from "@/hooks/useAuth"
 
 interface InterviewSettings {
   num_questions: number;
-  interview_type: "technical" | "behavioral" | "mixed";
   difficulty: "easy" | "medium" | "hard";
-  focus_areas: string[];
   job_role: string;
-  save_answers: boolean;
-  time_limit: boolean;
   time_per_question: number;
+  time_limit: boolean;
 }
 
-type InterviewStep = "selection" | "settings" | "generating" | "guidelines" | "interview" | "results";
+type InterviewStep = "selection" | "generating" | "guidelines" | "interview" | "results";
 
-export default function MockInterviewPage() {
+export default function MockTestPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
@@ -37,26 +33,17 @@ export default function MockInterviewPage() {
     job_role: "",
     time_per_question: 1.5,
     time_limit: true,
-    interview_type: "mixed",
-    focus_areas: ["Technical Skills", "Problem Solving"],
-    save_answers: true,
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
   
-  const handleRoleSelect = (role: string) => {
-    setSettings((prev) => ({ ...prev, job_role: role }))
-    setCurrentStep("settings")
-  }
-
-  const handleSettingsChange = (newSettings: InterviewSettings) => {
+  const handleRoleSelect = async (role: string) => {
+    const newSettings = { ...settings, job_role: role };
     setSettings(newSettings);
-  };
-
-  const handleStartInterviewFromSettings = async () => {
     setCurrentStep("generating");
+
     try {
-      const data = await startInterview(settings.job_role, settings.difficulty, settings.num_questions);
+      const data = await startInterview(newSettings.job_role, newSettings.difficulty, newSettings.num_questions);
       if (data.questions && data.questions.length > 0) {
         setQuestions(data.questions);
         setCurrentStep("guidelines");
@@ -66,7 +53,7 @@ export default function MockInterviewPage() {
     } catch (error) {
       console.error("Failed to generate questions:", error);
       alert("There was an error generating questions from the AI. Please try again.");
-      setCurrentStep("settings"); 
+      setCurrentStep("selection"); 
     }
   }
   
@@ -102,7 +89,6 @@ export default function MockInterviewPage() {
       ),
     }
 
-    // Save the interview results to Supabase
     if (user) {
       interviewAPI.saveInterview(user.id, results);
     }
@@ -115,24 +101,13 @@ export default function MockInterviewPage() {
     setCurrentStep("selection")
     setQuestions([])
     setInterviewResults(null)
-    setSettings({
-      num_questions: 10,
-      difficulty: "medium",
-      job_role: "",
-      time_per_question: 1.5,
-      time_limit: true,
-      interview_type: "mixed",
-      focus_areas: ["Technical Skills", "Problem Solving"],
-      save_answers: true,
-    })
+    setSettings((prev) => ({ ...prev, job_role: "", difficulty: "medium" }))
   }
 
   const renderCurrentStep = () => {
     switch (currentStep) {
       case "selection":
         return <RoleSelection onSelectRole={handleRoleSelect} />
-      case "settings":
-        return <SettingsPanel settings={settings} onSettingsChange={handleSettingsChange} onStartInterview={handleStartInterviewFromSettings} />
       case "generating":
         return <GeneratingQuestions />;
       case "guidelines":
