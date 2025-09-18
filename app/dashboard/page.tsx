@@ -5,8 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { FileText, MessageSquare, Search, ArrowRight, Brain, TrendingUp } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function ModuleSelector() {
+  const { user } = useAuth()
+
   const modules = [
     {
       id: "resume-analyzer",
@@ -49,7 +52,7 @@ export default function ModuleSelector() {
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-slate-600 dark:text-slate-400">
-                Welcome back, <span className="font-medium">John Doe</span>
+                Welcome back, <span className="font-medium">{user?.user_metadata.full_name || user?.email}</span>
               </div>
               <Button variant="outline" size="sm">
                 Settings

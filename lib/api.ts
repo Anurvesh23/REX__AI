@@ -57,7 +57,7 @@ export const resumeAPI = {
       keywords_missing: ["TypeScript", "Docker", "AWS", "GraphQL", "Testing"],
       parsed_resume_json: {
         sections: {
-          contact: { name: "John Doe", email: "john@example.com" },
+          contact: { name: "[Your Name]", email: "example@email.com" },
           experience: [],
           education: [],
           skills: [],
@@ -81,7 +81,7 @@ My background in software development, particularly with React and Node.js, alig
 I am excited about the opportunity to bring my skills and passion to your organization. Thank you for considering my application.
 
 Best regards,
-John Doe`
+[Your Name]`
   },
 
   // lib/api.ts
