@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Brain, FileText, MessageSquare, Search, CheckCircle, ArrowRight, TrendingUp, Menu, X } from "lucide-react"
+import { Brain, FileText, MessageSquare, Search, CheckCircle, ArrowRight, TrendingUp, Menu, X, GraduationCap } from "lucide-react"
 import Link from "next/link"
 
 export default function LandingPage() {
@@ -28,24 +28,24 @@ export default function LandingPage() {
       color: "bg-blue-500",
     },
     {
+      icon: GraduationCap,
+      title: "Mock Interview",
+      description: "Practice with company-specific and role-specific interview simulations.",
+      color: "bg-orange-500",
+    },
+    {
       icon: MessageSquare,
       title: "Mock Test",
       description: "Practice with AI-generated questions and receive detailed feedback on your responses",
       color: "bg-green-500",
     },
-    {
-      icon: Search,
-      title: "Job Search",
-      description: "Discover personalized job matches based on your resume and preferences",
-      color: "bg-purple-500",
-    },
   ]
 
   const steps = [
     { step: 1, title: "Sign Up", description: "Create your account in seconds" },
-    { step: 2, title: "Choose Module", description: "Select Resume, Interview, or Job Search" },
-    { step: 3, title: "Upload Resume", description: "Upload your resume for AI analysis" },
-    { step: 4, title: "Get Insights", description: "Receive personalized recommendations" },
+    { step: 2, title: "Choose a Tool", description: "Select Resume, Interview, or Test" },
+    { step: 3, title: "Upload & Practice", description: "Upload a resume or start a session" },
+    { step: 4, "title": "Get Insights", "description": "Receive personalized recommendations" },
   ]
 
   return (
@@ -323,6 +323,11 @@ export default function LandingPage() {
                 <li>
                   <a href="#" className="hover:text-white transition-colors">
                     Resume Analyzer
+                  </a>
+                </li>
+                 <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Mock Interview
                   </a>
                 </li>
                 <li>
