@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Brain, FileText, MessageSquare, Search, CheckCircle, ArrowRight, TrendingUp, Menu, X, GraduationCap } from "lucide-react"
+import { Brain, FileText, MessageSquare, Search, CheckCircle, ArrowRight, TrendingUp, Menu, X, GraduationCap, Star } from "lucide-react"
 import Link from "next/link"
 
 export default function LandingPage() {
@@ -20,30 +20,42 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  const features = [
+  const modules = [
     {
-      icon: FileText,
-      title: "Resume Analyzer",
-      description: "Get AI-powered resume scoring, keyword optimization, and ATS compatibility insights.",
-      color: "bg-blue-500",
+      id: "ai-duo",
+      title: "AI DUO",
+      description: "Build a new resume with AI or get an expert review of your existing one.",
+      icon: Star,
+      color: "from-yellow-500 to-orange-500",
+      features: ["AI Resume Builder", "AI Resume Reviewer", "ATS-Friendly Templates"],
+      href: "/dashboard/ai-duo",
     },
     {
-      icon: MessageSquare,
-      title: "Mock Test",
-      description: "Practice with AI-generated questions and receive detailed feedback on your responses.",
-      color: "bg-green-500",
-    },
-    {
-      icon: GraduationCap,
+      id: "mock-interview",
       title: "Mock Interview",
       description: "Practice with company-specific and role-specific interview simulations.",
-      color: "bg-orange-500",
+      icon: GraduationCap,
+      color: "from-orange-500 to-red-500",
+      features: ["Company-Specific Questions", "Behavioral & Technical Rounds", "Real-world Scenarios"],
+      href: "/dashboard/mock-interview",
     },
     {
-      icon: Search,
+      id: "mock-test",
+      title: "Mock Test",
+      description: "AI-powered skill tests with MCQs, feedback, and scores.",
+      icon: MessageSquare,
+      color: "from-green-500 to-teal-500",
+      features: ["AI-Generated MCQs", "Real-time Feedback", "Performance Scoring"],
+      href: "/dashboard/mock-test",
+    },
+     {
+      id: "job-search",
       title: "Job Search",
-      description: "Discover personalized job matches based on your resume and preferences.",
-      color: "bg-purple-500",
+      description: "Curated job suggestions and save jobs with personalized AI filters",
+      icon: Search,
+      color: "from-purple-500 to-indigo-500",
+      features: ["Personalized Matches", "Application Tracking", "Job Alerts"],
+      href: "/dashboard/job-search",
     },
   ]
 
@@ -222,7 +234,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - UPDATED */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -233,25 +245,45 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Powerful AI Features</h2>
             <p className="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
-              Everything you need to accelerate your job search and land your dream role
+              Everything you need to accelerate your job search and land your dream role.
             </p>
           </motion.div>
 
+          {/* Module Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
+            {modules.map((module, index) => (
               <motion.div
-                key={index}
+                key={module.id}
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.2 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
               >
-                <Card className="h-full hover:shadow-lg transition-shadow duration-300">
-                  <CardContent className="p-8">
-                    <div className={`${feature.color} w-12 h-12 rounded-lg flex items-center justify-center mb-6`}>
-                      <feature.icon className="h-6 w-6 text-white" />
+                <Card className="h-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group flex flex-col">
+                  <CardHeader className="pb-4">
+                    <div
+                      className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${module.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      <module.icon className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">{feature.title}</h3>
-                    <p className="text-slate-600 dark:text-slate-300">{feature.description}</p>
+                    <CardTitle className="text-2xl text-slate-900 dark:text-white">{module.title}</CardTitle>
+                    <CardDescription className="text-base text-slate-600 dark:text-slate-400">{module.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0 flex-grow flex flex-col justify-between">
+                    <ul className="space-y-2 mb-8">
+                      {module.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-center text-sm text-slate-700 dark:text-slate-300">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href={module.href}>
+                      <Button className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 transition-all duration-300">
+                        Get Started
+                        <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               </motion.div>
