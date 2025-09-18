@@ -29,7 +29,7 @@ export default function LandingPage() {
     },
     {
       icon: MessageSquare,
-      title: "Mock Interview",
+      title: "Mock Test",
       description: "Practice with AI-generated questions and receive detailed feedback on your responses",
       color: "bg-green-500",
     },
@@ -327,7 +327,7 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">
-                    Mock Interview
+                    Mock Test
                   </a>
                 </li>
                 <li>
