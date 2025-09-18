@@ -29,40 +29,70 @@ export default function ResumeAnalyzerPage() {
   const generateOptimizedResumePreview = (originalText: string, analysis: any): string => {
     if (!analysis) return originalText;
 
-    const suggestionsText = analysis.suggestions?.map((s: any) => `- ${s.title}: ${s.description}`).join('\n') || 'No specific suggestions.';
+    const suggestionsList = analysis.suggestions?.map((s: any) => `    * ${s.title}: ${s.description}`).join('\n') || '    * No specific suggestions provided.';
     const missingKeywordsText = analysis.keywords_missing?.join(', ') || 'None';
+    const matchedKeywordsText = analysis.keywords_matched?.join(', ') || 'None';
+
+    // A simple heuristic to grab the first few lines as a summary placeholder
+    const summaryPlaceholder = originalText.split('\n').slice(0, 5).join('\n');
 
     return `
-********** AI-OPTIMIZED RESUME PREVIEW **********
-
-This preview demonstrates how your original resume could be enhanced based on the AI analysis.
-
 ===================================================
-SECTION 1: ORIGINAL RESUME
+           AI-OPTIMIZED RESUME DRAFT
 ===================================================
+This draft incorporates ATS-friendly formatting and integrates suggestions 
+from the AI analysis to improve your chances of passing automated screenings.
 
-${originalText}
+---------------------------------------------------
+AI OPTIMIZATION SUMMARY & ACTION PLAN
+---------------------------------------------------
 
-===================================================
-SECTION 2: AI ANALYSIS & SUGGESTED CHANGES
-===================================================
+* **Overall Match Score:** ${analysis.overall_score}%
+* **ATS Compatibility Score:** ${analysis.ats_score}%
+* **Your Action Plan:**
+    1.  **Integrate Missing Keywords:** Weave the following keywords naturally into your experience and skills sections:
+        ${missingKeywordsText}
+    2.  **Address Key Suggestions:** Focus on these top recommendations to improve your resume's impact:
+${suggestionsList}
 
---- KEY SUGGESTIONS ---
-${suggestionsText}
+---------------------------------------------------
+[Your Name - e.g., Jane Doe]
+[Your Contact Info - e.g., (123) 456-7890 | jane.doe@email.com | linkedin.com/in/janedoe]
+---------------------------------------------------
 
---- MISSING KEYWORDS TO INTEGRATE ---
-${missingKeywordsText}
+**PROFESSIONAL SUMMARY**
+(AI Suggestion: Start with a powerful 2-3 sentence summary tailored to the job description. Mention your years of experience and top 2-3 skills relevant to the role.)
 
---- EXAMPLE OF REWRITTEN BULLET POINT (SIMULATED) ---
+${summaryPlaceholder}
+...
 
-Original: "Worked on the company's main web application."
-Optimized: "Spearheaded the development of new features for the company's flagship web application using React and TypeScript, resulting in a 15% increase in user engagement."
+**SKILLS**
+(AI Suggestion: Ensure this section is clearly formatted with bullet points or a comma-separated list for easy parsing by ATS.)
 
-===================================================
-END OF PREVIEW
-===================================================
-    `;
+* **Skills Matched with Job Description:** ${matchedKeywordsText}
+* **Skills to Add from Job Description:** ${missingKeywordsText}
+
+**PROFESSIONAL EXPERIENCE**
+(AI Suggestion: Use the STAR method (Situation, Task, Action, Result) for your bullet points. Start each point with a strong action verb and include quantifiable results.)
+
+**[Company Name]** — [Your Role] | [City, State] | [Start Date – End Date]
+* **Original Bullet Point Example:** "Responsible for managing project timelines."
+* **AI-Optimized Example:** "Successfully managed 5+ software development projects simultaneously, delivering all projects on average 10% ahead of schedule by implementing an agile workflow."
+
+... (Continue this format for all roles) ...
+
+[The rest of your original resume text would be restructured into this clear, scannable format.]
+
+**EDUCATION**
+**[University Name]** — [City, State]
+[Degree Name], [Graduation Date]
+
+---------------------------------------------------
+            END OF OPTIMIZED DRAFT
+---------------------------------------------------
+`;
   };
+
 
   const handleAnalyze = async (resumeFile: File, jobDescription: string) => {
     setIsAnalyzing(true)
@@ -237,7 +267,7 @@ END OF PREVIEW
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-full pr-4">
-            <pre className="text-sm whitespace-pre-wrap font-sans">
+            <pre className="text-sm whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-800 rounded-md p-4">
               {optimizedResumeText}
             </pre>
           </ScrollArea>
