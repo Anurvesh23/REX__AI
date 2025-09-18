@@ -12,15 +12,19 @@ import { analyzeResumeBackend } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ResumeAnalyzerPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<any>(null)
   const [currentStep, setCurrentStep] = useState<"upload" | "results">("upload")
   const [resumeData, setResumeData] = useState<{ resumeFile: File | null; jobDescription: string } | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [optimizedResumeText, setOptimizedResumeText] = useState("")
+  const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false)
+  const [coverLetterContent, setCoverLetterContent] = useState("")
 
   const generateOptimizedResumePreview = (originalText: string, analysis: any): string => {
     if (!analysis) return originalText;
@@ -72,20 +76,20 @@ END OF PREVIEW
       setCurrentStep("results")
     } catch (error) {
       console.error("Analysis failed:", error)
-      // Handle error - show toast notification
+      toast({
+        variant: "destructive",
+        title: "Analysis Failed",
+        description: "There was an error analyzing your resume. Please try again.",
+      })
     } finally {
       setIsAnalyzing(false)
     }
   }
 
-  // Generate cover letter by calling backend
   const handleGenerateCoverLetter = async () => {
-    if (!resumeData) {
-      alert("No resume data available.");
-      return;
-    }
+    if (!resumeData) return;
+    toast({ title: "Generating Cover Letter...", description: "Please wait while our AI works its magic." });
     try {
-      // For now, we assume resumeData.resumeFile is a File, so we need to read its text
       let resumeText = "";
       if (resumeData.resumeFile) {
         resumeText = await resumeData.resumeFile.text();
@@ -97,10 +101,14 @@ END OF PREVIEW
       });
       if (!response.ok) throw new Error("Failed to generate cover letter");
       const data = await response.json();
-      // For now, just show the cover letter in an alert
-      alert(data.cover_letter || "No cover letter generated.");
+      setCoverLetterContent(data.cover_letter || "Could not generate cover letter.");
+      setIsCoverLetterOpen(true);
     } catch (err) {
-      alert("Failed to generate cover letter. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Generation Failed",
+        description: "Could not generate a cover letter. Please try again.",
+      });
     }
   }
 
@@ -122,34 +130,40 @@ END OF PREVIEW
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "AI_Resume_Analysis.pdf";
+      a.download = "AI_Resume_Analysis_Report.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Failed to generate PDF. Please try again.");
+       toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: "Could not generate the PDF report. Please try again.",
+      });
     }
   }
 
-  // app/dashboard/resume-analyzer/page.tsx
-
-const handleSaveAnalysis = async () => {
-    if (!analysisResult) {
-      alert("No analysis result to save.");
-      return;
-    }
+  const handleSaveAnalysis = async () => {
+    if (!analysisResult) return;
     try {
       const response = await fetch("http://localhost:8000/save-analysis/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(analysisResult),
+        body: JSON.stringify({ user_id: user?.id, ...analysisResult }),
       });
       if (!response.ok) throw new Error("Failed to save analysis");
       const data = await response.json();
-      alert(data.message || "Analysis saved.");
+      toast({
+          title: "Success!",
+          description: data.message || "Analysis saved successfully.",
+      });
     } catch (err) {
-      alert("Failed to save analysis. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save the analysis. Please try again.",
+      });
     }
   }
 
@@ -200,11 +214,10 @@ const handleSaveAnalysis = async () => {
                 skills match, experience relevance, and optimization recommendations.
               </p>
             </div>
-
             <UploadResume onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
           </motion.div>
         ) : (
-          <ResultsPanel
+          analysisResult && <ResultsPanel
             analysisResult={analysisResult}
             onGenerateCoverLetter={handleGenerateCoverLetter}
             onPreviewResume={handlePreviewResume}
@@ -214,17 +227,35 @@ const handleSaveAnalysis = async () => {
         )}
       </div>
 
+      {/* AI Resume Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-4xl h-[90vh]">
           <DialogHeader>
             <DialogTitle>AI-Optimized Resume Preview</DialogTitle>
             <DialogDescription>
-              This is a preview of your resume with AI-suggested improvements integrated.
+              This is a preview demonstrating how your resume could be enhanced based on AI suggestions.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-full pr-4">
             <pre className="text-sm whitespace-pre-wrap font-sans">
               {optimizedResumeText}
+            </pre>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Generated Cover Letter Dialog */}
+      <Dialog open={isCoverLetterOpen} onOpenChange={setIsCoverLetterOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>AI-Generated Cover Letter</DialogTitle>
+             <DialogDescription>
+              You can copy the content below and tailor it to your needs.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh] pr-4 border rounded-md p-4">
+            <pre className="text-sm whitespace-pre-wrap font-sans">
+              {coverLetterContent}
             </pre>
           </ScrollArea>
         </DialogContent>
