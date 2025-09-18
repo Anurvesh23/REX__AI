@@ -19,6 +19,7 @@ import {
   BookOpen,
   BarChart3,
   Info,
+  Loader2,
 } from "lucide-react"
 import type { ResumeAnalysis } from "@/lib/gemini"
 
@@ -28,6 +29,8 @@ interface ResultsPanelProps {
   onPreviewResume: () => void
   onDownloadPDF: () => void
   onSaveAnalysis: () => void
+  onDownloadAiResume: () => void
+  isDownloadingAiResume: boolean
 }
 
 export default function ResultsPanel({
@@ -36,6 +39,8 @@ export default function ResultsPanel({
   onPreviewResume,
   onDownloadPDF,
   onSaveAnalysis,
+  onDownloadAiResume,
+  isDownloadingAiResume,
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState("overview")
 
@@ -392,7 +397,7 @@ export default function ResultsPanel({
       </Tabs>
 
       {/* Action Buttons */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Button onClick={onPreviewResume} className="flex items-center gap-2">
           <Eye className="h-4 w-4" />
           Preview Resume
@@ -401,6 +406,15 @@ export default function ResultsPanel({
         <Button onClick={onDownloadPDF} variant="outline" className="flex items-center gap-2 bg-transparent">
           <Download className="h-4 w-4" />
           Download Report
+        </Button>
+        
+        <Button onClick={onDownloadAiResume} disabled={isDownloadingAiResume} variant="outline" className="flex items-center gap-2 bg-transparent">
+          {isDownloadingAiResume ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Download AI Resume
         </Button>
 
         <Button onClick={onGenerateCoverLetter} variant="outline" className="flex items-center gap-2 bg-transparent">

@@ -60,6 +60,10 @@ class PDFRequest(BaseModel):
     strengths: List[str]
     weaknesses: List[str]
 
+class AiResumePdfRequest(BaseModel):
+    optimized_resume_text: str
+
+
 # --- PDF Generation Helper ---
 def create_analysis_pdf(data: dict):
     pdf = FPDF()
@@ -98,6 +102,45 @@ def create_analysis_pdf(data: dict):
         pdf.set_font("Arial", "", 10)
         pdf.multi_cell(0, 5, sug.get('description', ''))
         pdf.ln(2)
+
+    _, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+    pdf.output(temp_pdf_path)
+    return temp_pdf_path
+
+def create_optimized_resume_pdf(text_content: str):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "", 10)
+    
+    # Simple parsing of the structured text
+    lines = text_content.split('\n')
+    
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line:
+            pdf.ln(3)
+            continue
+            
+        if line.startswith('**') and line.endswith('**'):
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, line.strip('*'), 0, 1)
+            pdf.set_font("Arial", "", 10)
+        elif line.startswith('* **'):
+            pdf.set_font("Arial", "B", 10)
+            pdf.multi_cell(0, 5, " " + line.strip())
+            pdf.set_font("Arial", "", 10)
+        elif line.startswith('*'):
+            pdf.multi_cell(0, 5, "   " + line)
+        elif '---' in line or '===' in line:
+            pdf.ln(2)
+        else:
+            # Check for header-like lines (all caps, etc.)
+            if line.isupper() and len(line) > 5:
+                 pdf.set_font("Arial", "B", 12)
+                 pdf.cell(0, 10, line, 0, 1)
+                 pdf.set_font("Arial", "", 10)
+            else:
+                pdf.multi_cell(0, 5, line)
 
     _, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
     pdf.output(temp_pdf_path)
@@ -191,7 +234,7 @@ def analyze_resume(
         print(f"Error during resume analysis: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
 
-# --- NEW: Additional Endpoints ---
+# --- Additional Endpoints ---
 
 @app.post("/generate-cover-letter/")
 async def generate_cover_letter(request: CoverLetterRequest):
@@ -220,14 +263,16 @@ async def generate_pdf_report(request: PDFRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
+@app.post("/generate-ai-resume-pdf/")
+async def generate_ai_resume_pdf(request: AiResumePdfRequest):
+    try:
+        pdf_path = create_optimized_resume_pdf(request.optimized_resume_text)
+        return FileResponse(pdf_path, media_type='application/pdf', filename='AI_Optimized_Resume.pdf')
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
+
 @app.post("/save-analysis/")
 async def save_analysis(data: dict = Body(...)):
-    # In a real application, you would initialize the Supabase client here
-    # and insert the 'data' into your 'resumes' table.
-    # from supabase import create_client, Client
-    # url: str = os.environ.get("SUPABASE_URL")
-    # key: str = os.environ.get("SUPABASE_SERVICE_KEY")
-    # supabase: Client = create_client(url, key)
-    # response = supabase.table('resumes').insert(data).execute()
     print("Received data to save:", data.get("overall_score"))
     return {"message": "Analysis saved successfully!"}
