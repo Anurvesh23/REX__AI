@@ -64,6 +64,27 @@ const roles = {
       duration: 60,
       marks: 100,
     },
+    {
+      title: "DevOps Engineer",
+      image: "/images/roles/devops-engineer.png",
+      questions: 25,
+      duration: 45,
+      marks: 100,
+    },
+    {
+      title: "Cloud Engineer",
+      image: "/images/roles/cloud-engineer.png",
+      questions: 25,
+      duration: 45,
+      marks: 100,
+    },
+    {
+      title: "Cloud Architect",
+      image: "/images/roles/cloud-architect.png",
+      questions: 20,
+      duration: 50,
+      marks: 100,
+    },
   ],
   Management: [
     {
@@ -86,6 +107,13 @@ const roles = {
       questions: 30,
       duration: 50,
       marks: 100,
+    },
+    {
+        title: "Marketing Manager",
+        image: "/images/roles/marketing-manager.jpg",
+        questions: 20,
+        duration: 40,
+        marks: 100,
     },
   ],
   General: [
@@ -176,7 +204,7 @@ export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
           <TabsContent key={category} value={category}>
             {isGridView ? (
                 <motion.div
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6 max-w-7xl mx-auto"
+                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-7xl mx-auto"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}

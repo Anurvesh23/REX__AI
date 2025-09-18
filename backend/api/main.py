@@ -12,6 +12,7 @@ import docx2txt
 import fitz  # PyMuPDF
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+import time
 
 # --- Gemini AI Integration ---
 load_dotenv()
@@ -112,7 +113,6 @@ def create_optimized_resume_pdf(text_content: str):
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
     
-    # Simple parsing of the structured text
     lines = text_content.split('\n')
     
     for i, line in enumerate(lines):
@@ -134,7 +134,6 @@ def create_optimized_resume_pdf(text_content: str):
         elif '---' in line or '===' in line:
             pdf.ln(2)
         else:
-            # Check for header-like lines (all caps, etc.)
             if line.isupper() and len(line) > 5:
                  pdf.set_font("Arial", "B", 12)
                  pdf.cell(0, 10, line, 0, 1)
@@ -153,12 +152,14 @@ def create_optimized_resume_pdf(text_content: str):
 async def start_skill_test(data: dict = Body(...)):
     role = data.get("role", "Software Developer")
     difficulty = data.get("difficulty", "Medium")
-    num_questions = data.get("num_questions", 10)
+    num_questions = data.get("num_questions", 20)
 
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
+        # Added a timestamp to the prompt to ensure unique questions are generated each time
         prompt = f"""
-        Generate {num_questions} multiple-choice technical skill test questions for a '{role}' role at a '{difficulty}' difficulty level.
+        Generate {num_questions} completely unique and new multiple-choice technical skill test questions for a '{role}' role at a '{difficulty}' difficulty level.
+        Do not repeat questions from previous requests. Current timestamp is {time.time()} to ensure freshness.
 
         Return ONLY a valid JSON array of objects. Do not include any other text or markdown formatting like ```json.
         Each object in the array must have the following exact structure:

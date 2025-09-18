@@ -28,7 +28,7 @@ export default function MockTestPage() {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
-    num_questions: 10,
+    num_questions: 20, // Default number of questions is now 20
     difficulty: "medium",
     job_role: "",
     time_per_question: 1.5,
@@ -101,7 +101,7 @@ export default function MockTestPage() {
     setCurrentStep("selection")
     setQuestions([])
     setInterviewResults(null)
-    setSettings((prev) => ({ ...prev, job_role: "", difficulty: "medium" }))
+    setSettings((prev) => ({ ...prev, job_role: "", difficulty: "medium", num_questions: 20 }))
   }
 
   const renderCurrentStep = () => {
