@@ -1,3 +1,4 @@
+# backend/requirements.txt
 fastapi
 uvicorn[standard]
 python-dotenv
@@ -12,3 +13,4 @@ docx2txt
 PyMuPDF
 Pillow
 spacy[en_core_web_sm]
+gTTS

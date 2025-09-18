@@ -1,6 +1,10 @@
+# backend/api/main.py
 from fastapi import FastAPI, UploadFile, File, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from gtts import gTTS
+import uuid
 from fpdf import FPDF
 import tempfile
 import sys
@@ -13,6 +17,10 @@ import fitz  # PyMuPDF
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import time
+
+# Create a directory for temporary audio files if it doesn't exist
+if not os.path.exists("temp_audio"):
+    os.makedirs("temp_audio")
 
 # --- Gemini AI Integration ---
 load_dotenv()
@@ -35,6 +43,10 @@ from utils import save_upload_to_temp, extract_text_from_path
 
 app = FastAPI()
 
+# Mount static directory to serve audio files
+app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,6 +56,9 @@ app.add_middleware(
 )
 
 # --- Pydantic Models for Payloads ---
+class SpeakRequest(BaseModel):
+    text: str
+
 class CoverLetterRequest(BaseModel):
     resume: str
     job_description: str
@@ -152,13 +167,13 @@ def create_optimized_resume_pdf(text_content: str):
 async def start_skill_test(data: dict = Body(...)):
     role = data.get("role", "Software Developer")
     difficulty = data.get("difficulty", "Medium")
-    num_questions = data.get("num_questions", 20)
+    num_questions = data.get("num_questions", 10) # Reduced for faster demo
 
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         # Added a timestamp to the prompt to ensure unique questions are generated each time
         prompt = f"""
-        Generate {num_questions} completely unique and new multiple-choice technical skill test questions for a '{role}' role at a '{difficulty}' difficulty level.
+        Generate {num_questions} completely unique and new technical and behavioral interview questions for a '{role}' role at a '{difficulty}' difficulty level.
         Do not repeat questions from previous requests. Current timestamp is {time.time()} to ensure freshness.
 
         Return ONLY a valid JSON array of objects. Do not include any other text or markdown formatting like ```json.
@@ -166,10 +181,7 @@ async def start_skill_test(data: dict = Body(...)):
         {{
           "id": number,
           "question": "The question text.",
-          "category": "technical",
-          "difficulty": "{difficulty}",
-          "options": ["string for option A", "string for option B", "string for option C", "string for option D"],
-          "correctAnswer": "The exact string of the correct option from the 'options' array."
+          "category": "technical or behavioral"
         }}
         """
         response = model.generate_content(prompt)
@@ -187,6 +199,24 @@ async def start_skill_test(data: dict = Body(...)):
             status_code=500,
             content={"message": f"Failed to generate or parse AI response. Error: {str(e)}"}
         )
+
+# NEW Endpoint for Text-to-Speech
+@app.post("/interview/speak/")
+async def speak_text(request: SpeakRequest):
+    try:
+        tts = gTTS(text=request.text, lang='en', tld='co.in', slow=False)
+        filename = f"{uuid.uuid4()}.mp3"
+        filepath = os.path.join("temp_audio", filename)
+        tts.save(filepath)
+        
+        # In a production app, you'd return a full URL
+        # For local dev, this relative path works with the static mount
+        audio_url = f"/temp_audio/{filename}"
+        return {"audio_url": audio_url}
+    except Exception as e:
+        print(f"Error generating speech: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
 
 # --- Resume Analyzer Endpoint ---
 

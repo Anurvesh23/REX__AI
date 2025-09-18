@@ -56,13 +56,17 @@ const interviews = {
 };
 
 type InterviewState = 'selection' | 'setup' | 'active';
+interface InterviewDetails {
+    title: string;
+    company: string;
+}
 
 export default function MockInterviewPage() {
     const [interviewState, setInterviewState] = useState<InterviewState>('selection');
-    const [selectedInterview, setSelectedInterview] = useState<any | null>(null);
+    const [selectedInterview, setSelectedInterview] = useState<InterviewDetails | null>(null);
     const [userStream, setUserStream] = useState<MediaStream | null>(null);
 
-    const handleStartInterview = (interview: any) => {
+    const handleStartInterview = (interview: InterviewDetails) => {
         setSelectedInterview(interview);
         setInterviewState('setup');
     };
@@ -94,7 +98,7 @@ export default function MockInterviewPage() {
 
     if (interviewState === 'active' && selectedInterview) {
         return <VideoInterview 
-                    interviewTitle={selectedInterview.title} 
+                    interviewDetails={selectedInterview} 
                     userStream={userStream} 
                     onEndInterview={handleEndInterview} 
                 />;
