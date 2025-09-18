@@ -7,10 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Brain, FileText, MessageSquare, Search, CheckCircle, ArrowRight, TrendingUp, Menu, X, GraduationCap, Star } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/hooks/useAuth"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -98,6 +101,7 @@ export default function LandingPage() {
               >
                 How It Works
               </a>
+              <ThemeToggle />
               <Link href="/auth/signin">
                 <Button variant="ghost">Sign In</Button>
               </Link>
@@ -130,6 +134,9 @@ export default function LandingPage() {
               <a href="#how-it-works" className="block py-2 text-slate-700 dark:text-slate-300">
                 How It Works
               </a>
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <ThemeToggle />
+              </div>
               <Link href="/auth/signin" className="block py-2">
                 <Button variant="ghost" className="w-full">
                   Sign In
