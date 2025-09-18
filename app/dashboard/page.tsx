@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, MessageSquare, Search, ArrowRight, Brain, TrendingUp } from "lucide-react"
+import { FileText, MessageSquare, Search, ArrowRight, Brain, TrendingUp, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -54,9 +54,12 @@ export default function ModuleSelector() {
               <div className="text-sm text-slate-600 dark:text-slate-400">
                 Welcome back, <span className="font-medium">{user?.user_metadata.full_name || user?.email}</span>
               </div>
-              <Button variant="outline" size="sm">
-                Settings
-              </Button>
+              <Link href="/dashboard/settings">
+                <Button variant="outline" size="sm">
+                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
