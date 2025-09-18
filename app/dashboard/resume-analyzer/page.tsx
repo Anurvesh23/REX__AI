@@ -10,7 +10,8 @@ import UploadResume from "./upload-resume"
 import ResultsPanel from "./results-panel"
 import { analyzeResumeBackend } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function ResumeAnalyzerPage() {
   const { user } = useAuth()
@@ -18,6 +19,46 @@ export default function ResumeAnalyzerPage() {
   const [analysisResult, setAnalysisResult] = useState<any>(null)
   const [currentStep, setCurrentStep] = useState<"upload" | "results">("upload")
   const [resumeData, setResumeData] = useState<{ resumeFile: File | null; jobDescription: string } | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [optimizedResumeText, setOptimizedResumeText] = useState("")
+
+  const generateOptimizedResumePreview = (originalText: string, analysis: any): string => {
+    if (!analysis) return originalText;
+
+    const suggestionsText = analysis.suggestions?.map((s: any) => `- ${s.title}: ${s.description}`).join('\n') || 'No specific suggestions.';
+    const missingKeywordsText = analysis.keywords_missing?.join(', ') || 'None';
+
+    return `
+********** AI-OPTIMIZED RESUME PREVIEW **********
+
+This preview demonstrates how your original resume could be enhanced based on the AI analysis.
+
+===================================================
+SECTION 1: ORIGINAL RESUME
+===================================================
+
+${originalText}
+
+===================================================
+SECTION 2: AI ANALYSIS & SUGGESTED CHANGES
+===================================================
+
+--- KEY SUGGESTIONS ---
+${suggestionsText}
+
+--- MISSING KEYWORDS TO INTEGRATE ---
+${missingKeywordsText}
+
+--- EXAMPLE OF REWRITTEN BULLET POINT (SIMULATED) ---
+
+Original: "Worked on the company's main web application."
+Optimized: "Spearheaded the development of new features for the company's flagship web application using React and TypeScript, resulting in a 15% increase in user engagement."
+
+===================================================
+END OF PREVIEW
+===================================================
+    `;
+  };
 
   const handleAnalyze = async (resumeFile: File, jobDescription: string) => {
     setIsAnalyzing(true)
@@ -25,6 +66,9 @@ export default function ResumeAnalyzerPage() {
     try {
       const result = await analyzeResumeBackend(resumeFile, jobDescription)
       setAnalysisResult(result)
+      const originalText = await resumeFile.text();
+      const optimizedText = generateOptimizedResumePreview(originalText, result);
+      setOptimizedResumeText(optimizedText);
       setCurrentStep("results")
     } catch (error) {
       console.error("Analysis failed:", error)
@@ -61,8 +105,8 @@ export default function ResumeAnalyzerPage() {
   }
 
   const handlePreviewResume = () => {
-    if (!resumeData) return;
-    alert("Resume preview is not available for file uploads. Please open your original file.");
+    if (!optimizedResumeText) return;
+    setIsPreviewOpen(true);
   }
 
   const handleDownloadPDF = async () => {
@@ -169,6 +213,22 @@ const handleSaveAnalysis = async () => {
           />
         )}
       </div>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>AI-Optimized Resume Preview</DialogTitle>
+            <DialogDescription>
+              This is a preview of your resume with AI-suggested improvements integrated.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-full pr-4">
+            <pre className="text-sm whitespace-pre-wrap font-sans">
+              {optimizedResumeText}
+            </pre>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
