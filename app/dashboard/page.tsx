@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, MessageSquare, GraduationCap, Search, ArrowRight, Brain, TrendingUp, SettingsIcon } from "lucide-react"
+import { FileText, MessageSquare, GraduationCap, Search, ArrowRight, Brain, Star, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -12,20 +12,20 @@ export default function ModuleSelector() {
 
   const modules = [
     {
-      id: "resume-analyzer",
-      title: "Resume Analyzer",
-      description: "Get resume score, keyword insights, and formatting suggestions.",
-      icon: FileText,
-      color: "from-blue-500 to-blue-600",
-      features: ["ATS Compatibility Check", "Keyword Optimization", "Score Analysis"],
-      href: "/dashboard/resume-analyzer",
+      id: "ai-duo",
+      title: "AI DUO",
+      description: "Build a new resume with AI or get an expert review of your existing one.",
+      icon: Star,
+      color: "from-yellow-500 to-orange-500",
+      features: ["AI Resume Builder", "AI Resume Reviewer", "ATS-Friendly Templates"],
+      href: "/dashboard/ai-duo",
     },
     {
       id: "mock-interview",
       title: "Mock Interview",
       description: "Practice with company-specific and role-specific interview simulations.",
       icon: GraduationCap,
-      color: "from-orange-500 to-orange-600",
+      color: "from-orange-500 to-red-500",
       features: ["Company-Specific Questions", "Behavioral & Technical Rounds", "Real-world Scenarios"],
       href: "/dashboard/mock-interview",
     },
@@ -34,7 +34,7 @@ export default function ModuleSelector() {
       title: "Mock Test",
       description: "AI-powered skill tests with MCQs, feedback, and scores.",
       icon: MessageSquare,
-      color: "from-green-500 to-green-600",
+      color: "from-green-500 to-teal-500",
       features: ["AI-Generated MCQs", "Real-time Feedback", "Performance Scoring"],
       href: "/dashboard/mock-test",
     },
@@ -43,7 +43,7 @@ export default function ModuleSelector() {
       title: "Job Search",
       description: "Curated job suggestions and save jobs with personalized AI filters",
       icon: Search,
-      color: "from-purple-500 to-purple-600",
+      color: "from-purple-500 to-indigo-500",
       features: ["Personalized Matches", "Application Tracking", "Job Alerts"],
       href: "/dashboard/job-search",
     },
