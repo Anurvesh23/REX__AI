@@ -20,7 +20,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security ---
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import InvalidTokenError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -96,7 +97,7 @@ async def get_current_user_id(authorization: str = Header(None)):
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials, user ID is missing")
         return user_id
-    except JWTError as e:
+    except InvalidTokenError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials: {e}")
 
 # --- Security: File Upload Validation ---

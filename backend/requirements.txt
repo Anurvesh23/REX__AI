@@ -15,5 +15,6 @@ spacy[en_core_web_sm]
 gTTS
 # Security additions
 slowapi
-python-jose[cryptography]
 pip-audit
+# Secure JWT library replacing python-jose
+pyjwt[cryptography]
