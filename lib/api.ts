@@ -1,6 +1,5 @@
-// lib/api.ts
 import { supabase } from "./supabase";
-import type { Resume, Interview, SavedJob } from "./types"; // Assuming types are in './types'
+import type { Resume, Interview, SavedJob } from "./types";
 
 // --- Configuration ---
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -81,10 +80,11 @@ export const resumeAPI = {
 
     /**
      * Saves the result of a resume analysis via the backend. (Secured)
-     * The backend will associate it with the authenticated user via JWT.
+     * The user_id is handled by the backend via the JWT.
      */
     async saveAnalysis(analysisData: Partial<Resume>) {
-        const config = await createAuthenticatedRequest('POST', analysisData);
+        const { user_id, ...payload } = analysisData; // Exclude user_id from frontend payload
+        const config = await createAuthenticatedRequest('POST', payload);
         const response = await fetch(`${API_BASE_URL}/save-analysis/`, config);
 
         if (!response.ok) throw new Error("Failed to save analysis.");

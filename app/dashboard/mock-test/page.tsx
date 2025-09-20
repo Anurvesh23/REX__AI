@@ -98,6 +98,8 @@ export default function MockTestPage() {
         feedback: analysis.overall_feedback,
         suggestions: analysis.suggestions,
         duration_minutes: Math.round(answers.reduce((acc, a) => acc + a.time_taken, 0) / 60),
+        job_role: settings.job_role,
+        difficulty: settings.difficulty,
       }
 
       setInterviewResults(results);
