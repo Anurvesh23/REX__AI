@@ -478,18 +478,27 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
 @limiter.limit("10 per minute")
 async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
     try:
+        # Sanitize text inputs to remove null characters
+        sanitized_job_description = data.job_description.replace('\u0000', '')
+        sanitized_resume_text = data.original_resume_text.replace('\u0000', '')
+        
+        # Combine strengths and weaknesses into the suggestions list
+        combined_suggestions = data.suggestions
+        for strength in data.strengths:
+            combined_suggestions.append({"type": "success", "title": "Strength", "description": strength, "impact": "Positive", "category": "General"})
+        for weakness in data.weaknesses:
+            combined_suggestions.append({"type": "improvement", "title": "Weakness", "description": weakness, "impact": "Medium", "category": "General"})
+
         record_to_save = {
             "user_id": user_id,
-            "job_description": data.job_description,
-            "original_resume_text": data.original_resume_text,
+            "job_description": sanitized_job_description,
+            "original_resume_text": sanitized_resume_text,
             "ai_score": data.overall_score,
             "keyword_match_score": data.job_match,
             "ats_score": data.ats_score,
-            "suggestions": json.dumps(data.suggestions),
+            "suggestions": json.dumps(combined_suggestions).replace('\\u0000', ''),
             "keywords_matched": data.keywords_matched,
             "keywords_missing": data.keywords_missing,
-            "strengths": data.strengths,
-            "weaknesses": data.weaknesses
         }
 
         response = supabase.table("resumes").insert(record_to_save).execute()
