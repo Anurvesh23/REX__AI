@@ -140,6 +140,9 @@ class AnalysisReportPDFRequest(BaseModel):
     skills_match: Optional[int] = None
     experience_match: Optional[int] = None
     education_match: Optional[int] = None
+class OptimizeResumeRequest(BaseModel):
+    resume_text: str
+    job_description: str
 
 # --- PDF Generation Helpers ---
 def create_analysis_pdf(data: dict):
@@ -281,6 +284,40 @@ async def analyze_resume(
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+@app.post("/generate-optimized-resume/")
+@limiter.limit("5 per minute")
+async def generate_optimized_resume(request: Request, data: OptimizeResumeRequest, user_id: str = Depends(get_current_user_id)):
+    """
+    Takes original resume text and a job description, and returns a fully
+    rewritten, optimized version using a generative AI model.
+    """
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"""
+        **Task:** You are an expert career coach and resume writer. Your task is to completely rewrite and reformat the provided resume to be professional, ATS-friendly, and highly tailored to the given job description.
+
+        **Instructions:**
+        1.  **Format:** Use a clean, professional format with clear headings (e.g., SUMMARY, SKILLS, EXPERIENCE, EDUCATION, PROJECTS). Use markdown for bolding headings.
+        2.  **Content Rewrite:** Do not just copy sections. Rewrite the summary and experience bullet points to be more impactful. Use the STAR (Situation, Task, Action, Result) method and add quantifiable achievements where it makes sense based on the context.
+        3.  **Keyword Integration:** Seamlessly integrate relevant skills and keywords from the job description into the summary and experience sections. Make it sound natural.
+        4.  **Tone:** Maintain a professional and confident tone throughout.
+        5.  **Output:** Provide ONLY the rewritten resume text. Do not include any extra commentary, notes, or explanations before or after the resume content. Start directly with the candidate's name and contact info.
+
+        ---
+        **JOB DESCRIPTION FOR TARGETING:**
+        {data.job_description}
+        ---
+        **ORIGINAL RESUME TO REWRITE:**
+        {data.resume_text}
+        ---
+        **PROFESSIONALLY REWRITTEN RESUME:**
+        """
+        response = model.generate_content(prompt)
+        return {"optimized_resume_text": response.text}
+    except Exception as e:
+        print(f"Error during resume optimization for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate AI resume: {str(e)}")
 
 @app.post("/generate-cover-letter/")
 @limiter.limit("5 per minute")

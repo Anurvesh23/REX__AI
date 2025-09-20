@@ -77,6 +77,21 @@ export const resumeAPI = {
         const data = await response.json();
         return data.cover_letter;
     },
+    
+    /**
+     * Sends original resume and JD to the backend for a full AI rewrite. (Secured)
+     */
+    async generateOptimizedResume(resumeText: string, jobDescription: string): Promise<{ optimized_resume_text: string }> {
+        const payload = { resume_text: resumeText, job_description: jobDescription };
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/generate-optimized-resume/`, config);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to generate optimized resume: ${errorText}`);
+        }
+        return response.json();
+    },
 
     /**
      * Saves the result of a resume analysis via the backend. (Secured)
