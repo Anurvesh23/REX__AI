@@ -471,7 +471,7 @@ async def save_analysis(request: Request, data: AnalysisReportPDFRequest, user_i
     try:
         insert_data = {
             "user_id": user_id,
-            "ai_score": data.overall_score, # Corrected field name
+            "ai_score": data.overall_score, # Corrected field name to match schema
             "ats_score": data.ats_score,
             "suggestions": json.dumps(data.suggestions),
             "keywords_matched": data.keywords_matched,
@@ -526,16 +526,16 @@ async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depend
     """Saves a job to the Supabase 'saved_jobs' table."""
     try:
         # Check if the job already exists for this user to avoid duplicates
-        existing_job = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company", data.company_name).execute()
-        if len(existing_job.data) > 0:
+        existing_job_response = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company_name", data.company_name).execute()
+        if len(existing_job_response.data) > 0:
             return {"message": "Job already saved."}
 
         insert_data = {
             "user_id": user_id,
             "job_title": data.job_title,
-            "company": data.company_name,
+            "company_name": data.company_name, # Corrected field name
             "location": data.location,
-            "external_url": data.job_url,
+            "job_url": data.job_url, # Corrected field name
             "application_status": data.application_status
         }
         

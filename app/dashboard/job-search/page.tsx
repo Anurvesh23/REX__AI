@@ -94,7 +94,6 @@ export default function JobSearch() {
 
     try {
       const response = await jobAPI.saveJob({
-        user_id: user.id,
         job_title: job.job_title,
         company_name: job.company_name,
         location: job.location,

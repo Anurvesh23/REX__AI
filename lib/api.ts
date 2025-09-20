@@ -213,6 +213,7 @@ export const interviewAPI = {
      * The user_id is handled by the backend via the JWT.
      */
     async saveInterview(interviewData: Partial<Interview>) {
+        // user_id is not needed in the payload as the backend gets it from the token
         const { user_id, ...payload } = interviewData;
         const config = await createAuthenticatedRequest('POST', payload);
         const response = await fetch(`${API_BASE_URL}/save-interview/`, config);
