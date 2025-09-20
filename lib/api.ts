@@ -1,12 +1,8 @@
 // lib/api.ts
 // Call FastAPI backend for resume analysis
-export async function analyzeResumeBackend(resumeFile: File, jobDescription: string, weights = { skills: 0.35, semantic: 0.45, experience: 0.2 }, required_years = 2) {
+export async function analyzeResumeBackend(resumeFile: File, jobDescription: string) {
   const formData = new FormData();
   formData.append("jd_text", jobDescription);
-  formData.append("required_years", required_years.toString());
-  formData.append("w_skills", weights.skills.toString());
-  formData.append("w_sem", weights.semantic.toString());
-  formData.append("w_exp", weights.experience.toString());
   formData.append("file", resumeFile);
 
   const response = await fetch("http://localhost:8000/analyze/", {
@@ -23,71 +19,26 @@ import type { Resume, Interview, SavedJob } from "./supabase"
 
 // Resume Analysis API
 export const resumeAPI = {
-  async analyzeResume(resumeText: string, jobDescription?: string) {
-    // Simulate AI analysis - in production, this would call Gemini API
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-
-    const mockAnalysis = {
-      ai_score: Math.floor(Math.random() * 20) + 80, // 80-100
-      ats_score: Math.floor(Math.random() * 15) + 85, // 85-100
-      keyword_match_score: Math.floor(Math.random() * 25) + 75, // 75-100
-      suggestions: [
-        {
-          type: "improvement",
-          title: "Add Technical Skills Section",
-          description: "Include a dedicated technical skills section with relevant technologies.",
-          impact: "High",
-          category: "content",
-        },
-        {
-          type: "warning",
-          title: "Quantify Achievements",
-          description: "Add specific numbers and metrics to your accomplishments.",
-          impact: "Medium",
-          category: "content",
-        },
-        {
-          type: "success",
-          title: "Strong Action Verbs",
-          description: "Good use of action verbs throughout the resume.",
-          impact: "Positive",
-          category: "language",
-        },
-      ],
-      keywords_matched: ["JavaScript", "React", "Node.js", "MongoDB", "Git"],
-      keywords_missing: ["TypeScript", "Docker", "AWS", "GraphQL", "Testing"],
-      parsed_resume_json: {
-        sections: {
-          contact: { name: "[Your Name]", email: "example@email.com" },
-          experience: [],
-          education: [],
-          skills: [],
-        },
-      },
-    }
-
-    return mockAnalysis
+  async analyzeResume(resumeFile: File, jobDescription: string) {
+    return analyzeResumeBackend(resumeFile, jobDescription);
   },
 
   async generateCoverLetter(resumeText: string, jobDescription: string) {
-    // Simulate AI cover letter generation
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    return `Dear Hiring Manager,
-
-I am writing to express my strong interest in the position at your company. Based on my experience and the job requirements, I believe I would be a valuable addition to your team.
-
-My background in software development, particularly with React and Node.js, aligns well with your technical requirements. I have successfully delivered multiple projects that demonstrate my ability to work with modern web technologies and contribute to team success.
-
-I am excited about the opportunity to bring my skills and passion to your organization. Thank you for considering my application.
-
-Best regards,
-[Your Name]`
+     const response = await fetch("http://localhost:8000/generate-cover-letter/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ resume: resumeText, job_description: jobDescription }),
+    });
+    if (!response.ok) {
+        throw new Error("Failed to generate cover letter from the backend.");
+    }
+    const data = await response.json();
+    return data.cover_letter;
   },
 
-  // lib/api.ts
-
-async saveAnalysis(userId: string, analysisData: Partial<Resume>) {
+  async saveAnalysis(userId: string, analysisData: Partial<Resume>) {
     const { data, error } = await supabase
       .from("resumes")
       .insert({
@@ -143,23 +94,22 @@ export const interviewAPI = {
     if (!data.questions) {
         throw new Error("Backend did not return questions in the expected format.");
     }
-    
+
     return data.questions;
   },
 
   async evaluateAnswer(question: string, answer: string) {
-    // Simulate AI answer evaluation
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    const score = Math.floor(Math.random() * 3) + 7 // 7-10
-    const feedback =
-      score >= 9
-        ? "Excellent answer! You provided specific examples and demonstrated clear understanding."
-        : score >= 8
-          ? "Good answer with room for improvement. Consider adding more specific examples."
-          : "Your answer covers the basics but could benefit from more detail and concrete examples."
-
-    return { score, feedback }
+     const response = await fetch("http://localhost:8000/interview/evaluate/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question, answer }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to evaluate answer");
+    }
+    return await response.json();
   },
 
   async saveInterview(userId: string, interviewData: Partial<Interview>) {

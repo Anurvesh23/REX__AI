@@ -127,15 +127,15 @@ def create_optimized_resume_pdf(text_content: str):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
-    
+
     lines = text_content.split('\n')
-    
+
     for i, line in enumerate(lines):
         line = line.strip()
         if not line:
             pdf.ln(3)
             continue
-            
+
         if line.startswith('**') and line.endswith('**'):
             pdf.set_font("Arial", "B", 12)
             pdf.cell(0, 10, line.strip('*'), 0, 1)
@@ -190,7 +190,7 @@ async def start_skill_test(data: dict = Body(...)):
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         questions = json.loads(json_response_text)
-        
+
         for i, q in enumerate(questions):
             q['id'] = i + 1
 
@@ -211,7 +211,7 @@ async def speak_text(request: SpeakRequest):
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join("temp_audio", filename)
         tts.save(filepath)
-        
+
         # In a production app, you'd return a full URL
         # For local dev, this relative path works with the static mount
         audio_url = f"/temp_audio/{filename}"
@@ -232,15 +232,15 @@ def analyze_resume(
         temp_path = save_upload_to_temp(file)
         resume_text = extract_text_from_path(temp_path)
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
+
         prompt = f"""
         Analyze the provided resume against the job description. Provide a JSON response with the specified structure.
         JOB DESCRIPTION: {jd_text}
         RESUME: {resume_text}
-        
+
         Provide scores only for aspects explicitly mentioned in the job description (e.g., if education isn't mentioned, "education_match" should be null).
         Always include "job_match" and "ats_score".
-        
+
         JSON STRUCTURE:
         {{
           "overall_score": number (0-100),
@@ -257,11 +257,11 @@ def analyze_resume(
           "weaknesses": ["..."]
         }}
         """
-        
+
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         analysis_result = json.loads(json_response_text)
-        
+
         os.remove(temp_path)
         return analysis_result
     except Exception as e:
