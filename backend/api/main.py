@@ -172,25 +172,58 @@ async def start_skill_test(data: dict = Body(...)):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
-        Generate {num_questions} completely unique and new technical and behavioral multiple-choice interview questions for a '{role}' role at a '{difficulty}' difficulty level.
-        Do not repeat questions from previous requests. Current timestamp is {time.time()} to ensure freshness.
+        As an expert interviewer, generate {num_questions} unique and high-quality multiple-choice questions for a '{role}' position at a '{difficulty}' difficulty level. Ensure a good mix of technical and behavioral questions relevant to the role.
 
-        Return ONLY a valid JSON array of objects. Do not include any other text or markdown formatting like ```json.
-        Each object in the array must have the following exact structure:
+        **Instructions for question generation:**
+        1.  **Uniqueness:** Generate entirely new questions. Avoid repeating common or easily searchable questions. Use the current timestamp ({time.time()}) to ensure freshness.
+        2.  **Relevance:** Questions must be directly applicable to the '{role}' role. For technical questions, focus on practical scenarios and problem-solving. For behavioral questions, use situations a person in this role might face.
+        3.  **Clarity:** Questions and options should be clear, concise, and unambiguous.
+        4.  **Plausible Distractors:** Incorrect options (distractors) should be plausible but clearly incorrect to a knowledgeable candidate.
+        5.  **Strict JSON Output:** Return ONLY a valid JSON array of objects. Do not include any introductory text, markdown formatting like ```json, or any other text outside of the JSON structure.
+
+        **JSON Object Structure (per question):**
+        ```json
         {{
-          "id": number,
-          "question": "The question text.",
+          "id": "A unique integer for each question",
+          "question": "The full text of the question.",
           "category": "technical or behavioral",
           "difficulty": "{difficulty}",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correctAnswer": "The correct option string"
+          "options": [
+            "Option A",
+            "Option B",
+            "Option C",
+            "Option D"
+          ],
+          "correctAnswer": "The exact string of the correct option from the 'options' array."
         }}
-        The "correctAnswer" must be one of the strings from the "options" array.
+        ```
+
+        **Example for a Software Developer role:**
+        *Technical Question Idea:* "A user reports that a web page is loading slowly. What is the most likely bottleneck to investigate first: database query performance, frontend rendering, network latency, or server-side code execution?"
+        *Behavioral Question Idea:* "Describe a time you disagreed with a technical decision made by your team lead. How did you handle it, and what was the outcome?"
+
+        Now, generate the {num_questions} questions following these rules precisely.
         """
         response = model.generate_content(prompt)
+        # Clean the response to ensure it's valid JSON
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
-        questions = json.loads(json_response_text)
 
+        # Attempt to parse the JSON, with error handling
+        try:
+            questions = json.loads(json_response_text)
+            # Ensure the response is a list
+            if not isinstance(questions, list):
+                raise ValueError("AI response is not a JSON array.")
+        except json.JSONDecodeError:
+            # If parsing fails, try to find a JSON array within the response
+            match = re.search(r'\[\s*\{.*\}\s*\]', json_response_text, re.DOTALL)
+            if match:
+                questions = json.loads(match.group(0))
+            else:
+                raise ValueError("No valid JSON array found in the AI response.")
+
+
+        # Assign sequential IDs for consistency
         for i, q in enumerate(questions):
             q['id'] = i + 1
 
@@ -198,9 +231,10 @@ async def start_skill_test(data: dict = Body(...)):
 
     except Exception as e:
         print(f"Error calling Gemini API for questions: {e}")
+        # Provide a more detailed error response to the frontend
         return JSONResponse(
             status_code=500,
-            content={"message": f"Failed to generate or parse AI response. Error: {str(e)}"}
+            content={"message": f"An error occurred while generating AI questions: {str(e)}"}
         )
 
 # NEW Endpoint for Text-to-Speech
@@ -234,28 +268,53 @@ def analyze_resume(
         model = genai.GenerativeModel('gemini-1.5-flash')
 
         prompt = f"""
-        Analyze the provided resume against the job description. Provide a JSON response with the specified structure.
-        JOB DESCRIPTION: {jd_text}
-        RESUME: {resume_text}
+        **Objective:** Analyze the provided resume against the job description with high accuracy and provide a detailed, structured JSON response.
 
-        Provide scores only for aspects explicitly mentioned in the job description (e.g., if education isn't mentioned, "education_match" should be null).
-        Always include "job_match" and "ats_score".
+        **Context:**
+        - **Job Description:** {jd_text}
+        - **Resume:** {resume_text}
 
-        JSON STRUCTURE:
+        **Instructions for Analysis:**
+        1.  **Scoring:**
+            -   **skills_match, experience_match, education_match:** Only provide a score (0-100) if the job description explicitly mentions requirements for that category. Otherwise, the value must be `null`.
+            -   **job_match:** An overall compatibility score (0-100) for this specific role.
+            -   **ats_score:** An estimate (0-100) of how well the resume is optimized for Applicant Tracking Systems (ATS). Consider formatting, keywords, and structure.
+            -   **overall_score:** A weighted average of the other scores, reflecting the overall strength of the application.
+        2.  **Relevant Sections:** Identify which of the following sections are explicitly mentioned as requirements in the job description: `skills`, `experience`, `education`, `certifications`.
+        3.  **Suggestions:** Provide a minimum of 5 actionable suggestions for improvement. Each suggestion must have a clear `type`, `title`, `description`, `impact` (High, Medium, Low), and `category`.
+        4.  **Keywords:** Extract and list the keywords from the job description that are present in the resume (`keywords_matched`) and those that are not (`keywords_missing`). Be thorough.
+        5.  **Strengths & Weaknesses:** Identify at least 3 key strengths and 3 areas for improvement based on the comparison.
+
+        **Required JSON Output Structure (Do not include any text or markdown formatting outside of this JSON object):**
+        ```json
         {{
-          "overall_score": number (0-100),
-          "skills_match": number (0-100) or null,
-          "experience_match": number (0-100) or null,
-          "education_match": number (0-100) or null,
-          "job_match": number (0-100),
-          "ats_score": number (0-100),
-          "relevant_sections": {{ "skills": boolean, "experience": boolean, "education": boolean, "certifications": boolean }},
-          "suggestions": [{{ "type": "...", "title": "...", "description": "...", "impact": "...", "category": "..." }}],
-          "keywords_matched": ["..."],
-          "keywords_missing": ["..."],
-          "strengths": ["..."],
-          "weaknesses": ["..."]
+          "overall_score": number,
+          "skills_match": number | null,
+          "experience_match": number | null,
+          "education_match": number | null,
+          "job_match": number,
+          "ats_score": number,
+          "relevant_sections": {{
+            "skills": boolean,
+            "experience": boolean,
+            "education": boolean,
+            "certifications": boolean
+          }},
+          "suggestions": [
+            {{
+              "type": "improvement" | "warning" | "success",
+              "title": "string",
+              "description": "string",
+              "impact": "High" | "Medium" | "Low",
+              "category": "Content" | "Formatting" | "Keywords" | "Experience"
+            }}
+          ],
+          "keywords_matched": ["string"],
+          "keywords_missing": ["string"],
+          "strengths": ["string"],
+          "weaknesses": ["string"]
         }}
+        ```
         """
 
         response = model.generate_content(prompt)

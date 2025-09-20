@@ -20,6 +20,7 @@ import type { Resume, Interview, SavedJob } from "./supabase"
 // Resume Analysis API
 export const resumeAPI = {
   async analyzeResume(resumeFile: File, jobDescription: string) {
+    // This now directly calls the backend without any fallback to mock data.
     return analyzeResumeBackend(resumeFile, jobDescription);
   },
 
@@ -70,10 +71,10 @@ export const resumeAPI = {
   },
 }
 
-// Mock Interview API
+// Mock Interview & Mock Test API
 export const interviewAPI = {
   async generateQuestions(jobRole: string, difficulty = 'medium', settings = { num_questions: 10 }) {
-    // This now calls the actual backend instead of returning mock data.
+    // This single endpoint now serves both the mock interview and mock test features
     const response = await fetch("http://localhost:8000/interview/start/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,7 +92,7 @@ export const interviewAPI = {
     }
 
     const data = await response.json();
-    if (!data.questions) {
+    if (!data.questions || !Array.isArray(data.questions)) {
         throw new Error("Backend did not return questions in the expected format.");
     }
 
@@ -191,32 +192,6 @@ export const jobAPI = {
   },
 }
 
-// --- Live AI Interview API Functions ---
+// --- Live AI Interview API Functions (re-exporting for consistency) ---
 
-export async function startInterview(role: string, difficulty: string, num_questions: number) {
-  const response = await fetch("http://localhost:8000/interview/start/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ role, difficulty, num_questions }),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to start interview");
-  }
-  return await response.json();
-}
-
-export async function evaluateAnswer(question: string, answer: string) {
-  const response = await fetch("http://localhost:8000/interview/evaluate/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ question, answer }),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to evaluate answer");
-  }
-  return await response.json();
-}
+export const { generateQuestions: startInterview } = interviewAPI;
