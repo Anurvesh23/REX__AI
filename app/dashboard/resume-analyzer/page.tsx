@@ -41,15 +41,15 @@ export default function ResumeAnalyzerPage() {
             const results = await resumeAPI.analyzeResume(resumeFile, jobDescription);
             setAnalysisResult(results);
             
-            // Step 2: Generate the fully rewritten resume using the new endpoint
+            // Step 2: Generate the fully rewritten resume text
             toast({ title: "Generating AI-optimized resume...", description: "This may take a moment." });
+            // Assuming `generateOptimizedResume` exists in your API and returns { optimized_resume_text: string }
             const optimizedResume = await resumeAPI.generateOptimizedResume(originalText, jobDescription);
             setOptimizedResumeText(optimizedResume.optimized_resume_text);
             
             setCurrentStep("results");
         } catch (error: any) {
             console.error("Analysis failed:", error);
-            // This now displays the specific error message from the backend
             toast({
                 variant: "destructive",
                 title: "Analysis Failed",
@@ -128,9 +128,28 @@ export default function ResumeAnalyzerPage() {
     };
 
     const handleSaveAnalysis = async () => {
-        if (!analysisResult) return;
+        // Check if you have the necessary data
+        if (!analysisResult || !resumeData) {
+            toast({
+                variant: "destructive",
+                title: "Cannot Save",
+                description: "Missing analysis or resume data.",
+            });
+            return;
+        }
+
         try {
-            const savedData = await resumeAPI.saveAnalysis(analysisResult);
+            // Construct a complete payload
+            const payload = {
+                ...analysisResult,
+                job_description: resumeData.jobDescription,
+                original_resume_text: resumeData.resumeText,
+                // Add job_title if you have it, otherwise the backend can use a default
+                job_title: "Resume Analysis" 
+            };
+
+            const savedData = await resumeAPI.saveAnalysis(payload);
+            
             toast({
                 title: "Success!",
                 description: savedData.message || "Analysis saved successfully.",

@@ -137,7 +137,19 @@ class StartTestRequest(BaseModel): role: str; difficulty: str = "medium"; num_qu
 class AiResumePdfRequest(BaseModel): optimized_resume_text: str
 class EvaluateTestRequest(BaseModel): questions: List[Dict[str, Any]]; answers: List[Dict[str, Any]]
 class TestReportRequest(BaseModel): job_role: str; difficulty: str; overall_score: int; total_questions: int; correct_answers: int; duration_minutes: int; answers: List[Dict[str, Any]]; questions: List[Dict[str, Any]]
-class SaveAnalysisRequest(BaseModel): overall_score: int
+class SaveAnalysisRequest(BaseModel):
+    overall_score: int
+    job_match: int
+    ats_score: int
+    suggestions: List[Dict[str, Any]]
+    keywords_matched: List[str]
+    keywords_missing: List[str]
+    strengths: List[str]
+    weaknesses: List[str]
+    job_description: str
+    original_resume_text: str
+    job_title: Optional[str] = "Resume Analysis"
+
 class AnalysisReportPDFRequest(BaseModel):
     overall_score: int
     job_match: int
@@ -282,7 +294,6 @@ async def analyze_resume(
 ):
     temp_path = None
     try:
-        # --- START: Input Validation Step ---
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         validation_prompt = f"""
@@ -301,7 +312,6 @@ async def analyze_resume(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid input. Please provide a proper job description, not a URL or other text."
             )
-        # --- END: Input Validation Step ---
 
         temp_path = save_upload_to_temp(file)
         resume_text = extract_text_from_path(temp_path)
@@ -466,27 +476,34 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
         
 @app.post("/save-analysis/")
 @limiter.limit("10 per minute")
-async def save_analysis(request: Request, data: AnalysisReportPDFRequest, user_id: str = Depends(get_current_user_id)):
-    """Saves the resume analysis result to the Supabase 'resumes' table."""
+async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        insert_data = {
+        record_to_save = {
             "user_id": user_id,
-            "ai_score": data.overall_score, # Corrected field name to match schema
+            "job_description": data.job_description,
+            "original_resume_text": data.original_resume_text,
+            "job_title": data.job_title,
+            "ai_score": data.overall_score,
+            "job_match_score": data.job_match,
             "ats_score": data.ats_score,
             "suggestions": json.dumps(data.suggestions),
             "keywords_matched": data.keywords_matched,
             "keywords_missing": data.keywords_missing,
+            "strengths": data.strengths,
+            "weaknesses": data.weaknesses
         }
+
+        response = supabase.table("resumes").insert(record_to_save).execute()
         
-        response = supabase.table('resumes').insert(insert_data).execute()
+        if response.data:
+            return {"message": f"Analysis for user {user_id} saved successfully!"}
+        else:
+            error_message = response.error.message if response.error else "Unknown Supabase error"
+            raise HTTPException(status_code=500, detail=error_message)
 
-        if len(response.data) == 0:
-            raise Exception("Failed to insert data into database.")
-
-        return {"message": f"Analysis for user {user_id} saved successfully!"}
     except Exception as e:
         print(f"Error saving analysis for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
 @app.post("/save-interview/")
 @limiter.limit("10 per minute")
@@ -512,7 +529,7 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
         
         response = supabase.table('interviews').insert(insert_data).execute()
 
-        if len(response.data) == 0:
+        if not response.data:
             raise Exception("Failed to insert interview data into database.")
 
         return {"message": f"Interview results for user {user_id} saved successfully!"}
@@ -525,23 +542,22 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
 async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depends(get_current_user_id)):
     """Saves a job to the Supabase 'saved_jobs' table."""
     try:
-        # Check if the job already exists for this user to avoid duplicates
-        existing_job_response = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company_name", data.company_name).execute()
+        existing_job_response = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company", data.company_name).execute()
         if len(existing_job_response.data) > 0:
             return {"message": "Job already saved."}
 
         insert_data = {
             "user_id": user_id,
             "job_title": data.job_title,
-            "company_name": data.company_name, # Corrected field name
+            "company": data.company_name,
             "location": data.location,
-            "job_url": data.job_url, # Corrected field name
+            "external_url": data.job_url,
             "application_status": data.application_status
         }
         
         response = supabase.table('saved_jobs').insert(insert_data).execute()
 
-        if len(response.data) == 0:
+        if not response.data:
             raise Exception("Failed to insert job data into database.")
 
         return {"message": f"Job saved successfully for user {user_id}!"}
