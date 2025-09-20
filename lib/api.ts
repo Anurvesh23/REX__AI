@@ -209,17 +209,20 @@ export const interviewAPI = {
     },
 
     /**
-     * Saves interview results directly to Supabase.
+     * Saves interview results via the backend. (Secured)
+     * The user_id is handled by the backend via the JWT.
      */
-    async saveInterview(userId: string, interviewData: Partial<Interview>): Promise<Interview> {
-        const { data, error } = await supabase
-            .from("interviews")
-            .insert({ user_id: userId, ...interviewData })
-            .select()
-            .single();
+    async saveInterview(interviewData: Partial<Interview>) {
+        // user_id is not needed in the payload as the backend gets it from the token
+        const { user_id, ...payload } = interviewData;
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/save-interview/`, config);
 
-        if (error) throw error;
-        return data;
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to save interview results: ${errorText}`);
+        }
+        return response.json();
     },
 
     /**

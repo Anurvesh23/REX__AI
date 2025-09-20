@@ -32,6 +32,9 @@ from pydantic import BaseModel
 from fpdf import FPDF
 from gtts import gTTS
 
+# --- Supabase ---
+from supabase import create_client, Client
+
 # Add parent directory to system path for local module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import save_upload_to_temp, extract_text_from_path
@@ -46,8 +49,15 @@ try:
     print("--- Gemini AI configured successfully. ---")
 except Exception as e:
     print(f"FATAL: Error configuring Gemini AI. Please check your GOOGLE_API_KEY. Error: {e}")
-    # In a real app, you might want to exit or handle this more gracefully
-    # sys.exit(1)
+
+# --- Supabase Configuration ---
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") # IMPORTANT: Use Service Role Key for backend
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("Supabase URL or Service Role Key is not set in the environment.")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+print("--- Supabase client configured successfully. ---")
+
 
 # --- App & Middleware Setup ---
 app = FastAPI(title="Rex--AI API")
@@ -127,7 +137,7 @@ class StartTestRequest(BaseModel): role: str; difficulty: str = "medium"; num_qu
 class AiResumePdfRequest(BaseModel): optimized_resume_text: str
 class EvaluateTestRequest(BaseModel): questions: List[Dict[str, Any]]; answers: List[Dict[str, Any]]
 class TestReportRequest(BaseModel): job_role: str; difficulty: str; overall_score: int; total_questions: int; correct_answers: int; duration_minutes: int; answers: List[Dict[str, Any]]; questions: List[Dict[str, Any]]
-class SaveAnalysisRequest(BaseModel): overall_score: int # Add other fields as needed for saving
+class SaveAnalysisRequest(BaseModel): overall_score: int
 class AnalysisReportPDFRequest(BaseModel):
     overall_score: int
     job_match: int
@@ -143,6 +153,26 @@ class AnalysisReportPDFRequest(BaseModel):
 class OptimizeResumeRequest(BaseModel):
     resume_text: str
     job_description: str
+class SaveInterviewRequest(BaseModel):
+    job_role: str
+    difficulty: str
+    overall_score: int
+    total_questions: int
+    correct_answers: int
+    answered_questions: int
+    duration_minutes: int
+    questions: List[Dict[str, Any]]
+    answers: List[Dict[str, Any]]
+    feedback: Optional[str] = None
+    suggestions: Optional[List[str]] = None
+    category_scores: Optional[Dict[str, int]] = None
+class SaveJobRequest(BaseModel):
+    job_title: str
+    company_name: str
+    location: Optional[str] = None
+    job_url: Optional[str] = None
+    application_status: str = "Saved"
+
 
 # --- PDF Generation Helpers ---
 def create_analysis_pdf(data: dict):
@@ -190,7 +220,6 @@ def create_optimized_resume_pdf(text_content: str):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
-    # Using utf-8 encode to handle special characters
     for line in text_content.split('\n'):
         line = line.strip()
         if not line:
@@ -416,8 +445,85 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
         
 @app.post("/save-analysis/")
 @limiter.limit("10 per minute")
-async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
-    # This is a placeholder for your database logic
-    # e.g., db.save_analysis(user_id=user_id, score=data.overall_score)
-    print(f"Authenticated user {user_id} is saving analysis data with score: {data.overall_score}")
-    return {"message": f"Analysis for user {user_id} saved successfully!"}
+async def save_analysis(request: Request, data: AnalysisReportPDFRequest, user_id: str = Depends(get_current_user_id)):
+    """Saves the resume analysis result to the Supabase 'resumes' table."""
+    try:
+        insert_data = {
+            "user_id": user_id,
+            "ai_score": data.overall_score,
+            "ats_score": data.ats_score,
+            "suggestions": json.dumps(data.suggestions),
+            "keywords_matched": data.keywords_matched,
+            "keywords_missing": data.keywords_missing,
+        }
+        
+        response = supabase.table('resumes').insert(insert_data).execute()
+
+        if len(response.data) == 0:
+            raise Exception("Failed to insert data into database.")
+
+        return {"message": f"Analysis for user {user_id} saved successfully!"}
+    except Exception as e:
+        print(f"Error saving analysis for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/save-interview/")
+@limiter.limit("10 per minute")
+async def save_interview(request: Request, data: SaveInterviewRequest, user_id: str = Depends(get_current_user_id)):
+    """Saves the mock test/interview result to the Supabase 'interviews' table."""
+    try:
+        insert_data = {
+            "user_id": user_id,
+            "job_role": data.job_role,
+            "difficulty": data.difficulty,
+            "overall_score": data.overall_score,
+            "total_questions": data.total_questions,
+            "correct_answers": data.correct_answers,
+            "answered_questions": data.answered_questions,
+            "duration_minutes": data.duration_minutes,
+            "questions": json.dumps(data.questions),
+            "answers": json.dumps(data.answers),
+            "feedback": data.feedback,
+            "suggestions": data.suggestions,
+            "category_scores": json.dumps(data.category_scores) if data.category_scores else None,
+            "status": "completed"
+        }
+        
+        response = supabase.table('interviews').insert(insert_data).execute()
+
+        if len(response.data) == 0:
+            raise Exception("Failed to insert interview data into database.")
+
+        return {"message": f"Interview results for user {user_id} saved successfully!"}
+    except Exception as e:
+        print(f"Error saving interview for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/save-job/")
+@limiter.limit("10 per minute")
+async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depends(get_current_user_id)):
+    """Saves a job to the Supabase 'saved_jobs' table."""
+    try:
+        # Check if the job already exists for this user to avoid duplicates
+        existing_job = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company_name", data.company_name).execute()
+        if len(existing_job.data) > 0:
+            return {"message": "Job already saved."}
+
+        insert_data = {
+            "user_id": user_id,
+            "job_title": data.job_title,
+            "company": data.company_name,
+            "location": data.location,
+            "external_url": data.job_url,
+            "application_status": data.application_status
+        }
+        
+        response = supabase.table('saved_jobs').insert(insert_data).execute()
+
+        if len(response.data) == 0:
+            raise Exception("Failed to insert job data into database.")
+
+        return {"message": f"Job saved successfully for user {user_id}!"}
+    except Exception as e:
+        print(f"Error saving job for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
