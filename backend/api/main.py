@@ -4,7 +4,6 @@ import sys
 import os
 import json
 import uuid
-import re
 from typing import List, Optional, Dict, Any
 
 # --- Environment and AI ---
@@ -13,7 +12,7 @@ from dotenv import load_dotenv
 
 # --- Web Framework (FastAPI) ---
 from fastapi import (
-    FastAPI, UploadFile, File, Form, Body, Depends, HTTPException, Header, status
+    FastAPI, UploadFile, File, Form, Body, Depends, HTTPException, Header, status, Request
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -30,8 +29,6 @@ from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 
 # --- Utilities ---
-import docx2txt
-import fitz  # PyMuPDF
 from fpdf import FPDF
 from gtts import gTTS
 
@@ -126,6 +123,7 @@ def validate_file(file: UploadFile):
 # --- Pydantic Models ---
 class SpeakRequest(BaseModel): text: str
 class CoverLetterRequest(BaseModel): resume: str; job_description: str
+class StartTestRequest(BaseModel): role: str; difficulty: str = "medium"; num_questions: int = 10
 class AiResumePdfRequest(BaseModel): optimized_resume_text: str
 class EvaluateTestRequest(BaseModel): questions: List[Dict[str, Any]]; answers: List[Dict[str, Any]]
 class TestReportRequest(BaseModel): job_role: str; difficulty: str; overall_score: int; total_questions: int; correct_answers: int; duration_minutes: int; answers: List[Dict[str, Any]]; questions: List[Dict[str, Any]]
@@ -189,6 +187,7 @@ def create_optimized_resume_pdf(text_content: str):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
+    # Using utf-8 encode to handle special characters
     for line in text_content.split('\n'):
         line = line.strip()
         if not line:
@@ -199,7 +198,7 @@ def create_optimized_resume_pdf(text_content: str):
             pdf.cell(0, 10, line.strip('*'), 0, 1)
             pdf.set_font("Arial", "", 10)
         else:
-            pdf.multi_cell(0, 5, line)
+            pdf.multi_cell(0, 5, line.encode('latin-1', 'replace').decode('latin-1'))
     _, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
     pdf.output(temp_pdf_path)
     return temp_pdf_path
@@ -223,16 +222,16 @@ def create_test_report_pdf(data: TestReportRequest):
         question = next((q for q in data.questions if q['id'] == answer_data['question_id']), None)
         if not question: continue
         pdf.set_font("Arial", "B", 10)
-        pdf.multi_cell(0, 5, f"Q: {question['question']}")
+        pdf.multi_cell(0, 5, f"Q: {question['question']}".encode('latin-1', 'replace').decode('latin-1'))
         pdf.set_font("Arial", "", 10)
         if answer_data['is_correct']:
             pdf.set_text_color(34, 139, 34)
-            pdf.multi_cell(0, 5, f"  Your Answer (Correct): {answer_data.get('selected_answer', 'Skipped')}")
+            pdf.multi_cell(0, 5, f"  Your Answer (Correct): {answer_data.get('selected_answer', 'Skipped')}".encode('latin-1', 'replace').decode('latin-1'))
         else:
             pdf.set_text_color(220, 20, 60)
-            pdf.multi_cell(0, 5, f"  Your Answer (Incorrect): {answer_data.get('selected_answer', 'Skipped')}")
+            pdf.multi_cell(0, 5, f"  Your Answer (Incorrect): {answer_data.get('selected_answer', 'Skipped')}".encode('latin-1', 'replace').decode('latin-1'))
             pdf.set_text_color(34, 139, 34)
-            pdf.multi_cell(0, 5, f"  Correct Answer: {answer_data.get('correct_answer')}")
+            pdf.multi_cell(0, 5, f"  Correct Answer: {answer_data.get('correct_answer')}".encode('latin-1', 'replace').decode('latin-1'))
         pdf.set_text_color(0, 0, 0)
         pdf.ln(4)
     _, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
@@ -244,6 +243,7 @@ def create_test_report_pdf(data: TestReportRequest):
 @app.post("/analyze/")
 @limiter.limit("5 per minute")
 async def analyze_resume(
+    request: Request,
     jd_text: str = Form(...),
     file: UploadFile = Depends(validate_file),
     user_id: str = Depends(get_current_user_id)
@@ -284,10 +284,10 @@ async def analyze_resume(
 
 @app.post("/generate-cover-letter/")
 @limiter.limit("5 per minute")
-async def generate_cover_letter(request: CoverLetterRequest, user_id: str = Depends(get_current_user_id)):
+async def generate_cover_letter(request: Request, data: CoverLetterRequest, user_id: str = Depends(get_current_user_id)):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{request.resume}\n\nJOB DESCRIPTION:\n{request.job_description}"
+        prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{data.resume}\n\nJOB DESCRIPTION:\n{data.job_description}"
         response = model.generate_content(prompt)
         return {"cover_letter": response.text}
     except Exception as e:
@@ -295,13 +295,13 @@ async def generate_cover_letter(request: CoverLetterRequest, user_id: str = Depe
 
 @app.post("/interview/start/")
 @limiter.limit("5 per minute")
-async def start_skill_test(data: dict = Body(...), user_id: str = Depends(get_current_user_id)):
+async def start_skill_test(request: Request, data: StartTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"""Generate {data.get("num_questions", 10)} unique, high-quality, and tricky multiple-choice questions for a '{data.get("role", "Software Developer")}' position at a '{data.get("difficulty", "Medium")}' difficulty level. Return ONLY a valid JSON array of objects.
+        prompt = f"""Generate {data.num_questions} unique, high-quality, and tricky multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' difficulty level. Return ONLY a valid JSON array of objects.
         **JSON Object Structure (per question):**
         ```json
-        {{ "id": "A unique integer", "question": "The question text.", "category": "technical or behavioral", "difficulty": "{data.get("difficulty", "Medium")}", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": "The exact string of the correct option." }}
+        {{ "id": "A unique integer", "question": "The question text.", "category": "technical or behavioral", "difficulty": "{data.difficulty}", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": "The exact string of the correct option." }}
         ```
         """
         response = model.generate_content(prompt)
@@ -314,13 +314,13 @@ async def start_skill_test(data: dict = Body(...), user_id: str = Depends(get_cu
 
 @app.post("/interview/evaluate-test/")
 @limiter.limit("10 per minute")
-async def evaluate_test(request: EvaluateTestRequest, user_id: str = Depends(get_current_user_id)):
+async def evaluate_test(request: Request, data: EvaluateTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
         Analyze the results of a mock test. Provide a comprehensive analysis in a strict JSON format.
-        - **Questions:** {json.dumps(request.questions)}
-        - **User's Answers:** {json.dumps(request.answers)}
+        - **Questions:** {json.dumps(data.questions)}
+        - **User's Answers:** {json.dumps(data.answers)}
         **Required JSON Output Structure:**
         ```json
         {{
@@ -339,9 +339,9 @@ async def evaluate_test(request: EvaluateTestRequest, user_id: str = Depends(get
 
 @app.post("/interview/speak/")
 @limiter.limit("20 per minute")
-async def speak_text(request: SpeakRequest, user_id: str = Depends(get_current_user_id)):
+async def speak_text(request: Request, data: SpeakRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        tts = gTTS(text=request.text, lang='en', tld='co.in', slow=False)
+        tts = gTTS(text=data.text, lang='en', tld='co.in', slow=False)
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join("temp_audio", filename)
         tts.save(filepath)
@@ -352,34 +352,34 @@ async def speak_text(request: SpeakRequest, user_id: str = Depends(get_current_u
 
 @app.post("/generate-analysis-pdf/")
 @limiter.limit("10 per minute")
-async def generate_analysis_pdf_report(request: AnalysisReportPDFRequest, user_id: str = Depends(get_current_user_id)):
+async def generate_analysis_pdf_report(request: Request, data: AnalysisReportPDFRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        pdf_path = create_analysis_pdf(request.dict())
+        pdf_path = create_analysis_pdf(data.dict())
         return FileResponse(pdf_path, media_type='application/pdf', filename='AI_Resume_Analysis.pdf')
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 @app.post("/generate-ai-resume-pdf/")
 @limiter.limit("10 per minute")
-async def generate_ai_resume_pdf(request: AiResumePdfRequest, user_id: str = Depends(get_current_user_id)):
+async def generate_ai_resume_pdf(request: Request, data: AiResumePdfRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        pdf_path = create_optimized_resume_pdf(request.optimized_resume_text)
+        pdf_path = create_optimized_resume_pdf(data.optimized_resume_text)
         return FileResponse(pdf_path, media_type='application/pdf', filename='AI_Optimized_Resume.pdf')
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 @app.post("/interview/generate-report-pdf/")
 @limiter.limit("10 per minute")
-async def generate_test_report_pdf(request: TestReportRequest, user_id: str = Depends(get_current_user_id)):
+async def generate_test_report_pdf(request: Request, data: TestReportRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        pdf_path = create_test_report_pdf(request)
-        return FileResponse(pdf_path, media_type='application/pdf', filename=f"{request.job_role}_Mock_Test_Report.pdf")
+        pdf_path = create_test_report_pdf(data)
+        return FileResponse(pdf_path, media_type='application/pdf', filename=f"{data.job_role}_Mock_Test_Report.pdf")
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
         
 @app.post("/save-analysis/")
 @limiter.limit("10 per minute")
-async def save_analysis(data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
+async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
     # This is a placeholder for your database logic
     # e.g., db.save_analysis(user_id=user_id, score=data.overall_score)
     print(f"Authenticated user {user_id} is saving analysis data with score: {data.overall_score}")
