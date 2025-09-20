@@ -213,7 +213,6 @@ export const interviewAPI = {
      * The user_id is handled by the backend via the JWT.
      */
     async saveInterview(interviewData: Partial<Interview>) {
-        // user_id is not needed in the payload as the backend gets it from the token
         const { user_id, ...payload } = interviewData;
         const config = await createAuthenticatedRequest('POST', payload);
         const response = await fetch(`${API_BASE_URL}/save-interview/`, config);
@@ -244,17 +243,18 @@ export const interviewAPI = {
 
 export const jobAPI = {
     /**
-     * Saves a job listing directly to Supabase.
+     * Saves a job listing via the backend. (Secured)
      */
-    async saveJob(userId: string, jobData: Partial<SavedJob>): Promise<SavedJob> {
-        const { data, error } = await supabase
-            .from("saved_jobs")
-            .insert({ user_id: userId, ...jobData })
-            .select()
-            .single();
+    async saveJob(jobData: Partial<SavedJob>): Promise<{ message: string }> {
+        const { user_id, ...payload } = jobData;
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/save-job/`, config);
 
-        if (error) throw error;
-        return data;
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to save job: ${errorText}`);
+        }
+        return response.json();
     },
 
     /**

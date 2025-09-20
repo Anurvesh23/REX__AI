@@ -107,7 +107,7 @@ export default function MockTestPage() {
       // --- Database Storage Enabled ---
       if (user) {
         try {
-          await interviewAPI.saveInterview(user.id, results);
+          await interviewAPI.saveInterview({ ...results, user_id: user.id });
           toast({
             title: "Success!",
             description: "Your interview results have been saved to your profile.",

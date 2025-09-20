@@ -47,12 +47,13 @@ export default function ResumeAnalyzerPage() {
             setOptimizedResumeText(optimizedResume.optimized_resume_text);
             
             setCurrentStep("results");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Analysis failed:", error);
+            // This now displays the specific error message from the backend
             toast({
                 variant: "destructive",
                 title: "Analysis Failed",
-                description: error instanceof Error ? error.message : "There was an error analyzing your resume. Please try again.",
+                description: error.message || "An unknown error occurred. Please try again.",
             });
         } finally {
             setIsAnalyzing(false);

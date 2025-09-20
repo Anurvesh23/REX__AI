@@ -282,11 +282,31 @@ async def analyze_resume(
 ):
     temp_path = None
     try:
-        temp_path = save_upload_to_temp(file)
-        resume_text = extract_text_from_path(temp_path)
+        # --- START: Input Validation Step ---
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        prompt = f"""
+        validation_prompt = f"""
+        Analyze the following text and determine if it is a valid job description. 
+        A valid job description typically includes sections like "Responsibilities", "Qualifications", "Requirements", or lists skills and experience needed for a role.
+        A URL, random text, or a code repository link is NOT a valid job description.
+        
+        Text to verify: "{jd_text}"
+        
+        Is this a valid job description? Answer with only "yes" or "no".
+        """
+        validation_response = model.generate_content(validation_prompt)
+        
+        if "yes" not in validation_response.text.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid input. Please provide a proper job description, not a URL or other text."
+            )
+        # --- END: Input Validation Step ---
+
+        temp_path = save_upload_to_temp(file)
+        resume_text = extract_text_from_path(temp_path)
+        
+        analysis_prompt = f"""
         **Objective:** Analyze the provided resume against the job description with high accuracy and provide a detailed, structured JSON response.
         **Context:**
          - **Job Description:** {jd_text}
@@ -301,15 +321,16 @@ async def analyze_resume(
         }}
         ```
         """
-        response = model.generate_content(prompt)
-        # Clean the response to ensure it's valid JSON
+        response = model.generate_content(analysis_prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         analysis_result = json.loads(json_response_text)
         
         return analysis_result
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
         print(f"Error during resume analysis for user {user_id}: {e}")
-        return JSONResponse(status_code=500, content={"message": str(e)})
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during analysis.")
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
@@ -450,7 +471,7 @@ async def save_analysis(request: Request, data: AnalysisReportPDFRequest, user_i
     try:
         insert_data = {
             "user_id": user_id,
-            "ai_score": data.overall_score,
+            "ai_score": data.overall_score, # Corrected field name
             "ats_score": data.ats_score,
             "suggestions": json.dumps(data.suggestions),
             "keywords_matched": data.keywords_matched,
@@ -505,7 +526,7 @@ async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depend
     """Saves a job to the Supabase 'saved_jobs' table."""
     try:
         # Check if the job already exists for this user to avoid duplicates
-        existing_job = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company_name", data.company_name).execute()
+        existing_job = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company", data.company_name).execute()
         if len(existing_job.data) > 0:
             return {"message": "Job already saved."}
 

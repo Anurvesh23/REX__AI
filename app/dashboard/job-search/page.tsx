@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,69 +21,101 @@ import {
   TrendingUp,
 } from "lucide-react"
 import Link from "next/link"
+import { jobAPI } from "@/lib/api"
+import { useAuth } from "@/hooks/useAuth"
+import { useToast } from "@/components/ui/use-toast"
+import type { SavedJob } from "@/lib/types"
 
 export default function JobSearch() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("")
-  const [savedJobs, setSavedJobs] = useState<number[]>([])
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([])
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Mock data for display purposes until a real job search API is integrated
   const mockJobs = [
     {
       id: 1,
-      title: "Senior Frontend Developer",
-      company: "TechCorp Inc.",
+      job_title: "Senior Frontend Developer",
+      company_name: "TechCorp Inc.",
       location: "San Francisco, CA",
-      type: "Full-time",
-      salary: "$120k - $160k",
+      job_type: "Full-time",
+      salary_range: "$120k - $160k",
       posted: "2 days ago",
       matchScore: 95,
       description: "We are looking for a Senior Frontend Developer to join our growing team...",
       requirements: ["React", "TypeScript", "Node.js", "GraphQL"],
       benefits: ["Health Insurance", "Remote Work", "401k", "Stock Options"],
     },
-    {
-      id: 2,
-      title: "Full Stack Engineer",
-      company: "StartupXYZ",
-      location: "New York, NY",
-      type: "Full-time",
-      salary: "$100k - $140k",
-      posted: "1 day ago",
-      matchScore: 88,
-      description: "Join our innovative team building the next generation of web applications...",
-      requirements: ["JavaScript", "React", "Python", "AWS"],
-      benefits: ["Flexible Hours", "Health Insurance", "Learning Budget"],
-    },
-    {
-      id: 3,
-      title: "React Developer",
-      company: "Digital Agency Pro",
-      location: "Austin, TX",
-      type: "Contract",
-      salary: "$80k - $100k",
-      posted: "3 days ago",
-      matchScore: 82,
-      description: "We need a skilled React developer for a 6-month project...",
-      requirements: ["React", "JavaScript", "CSS", "Git"],
-      benefits: ["Remote Work", "Flexible Schedule"],
-    },
-    {
-      id: 4,
-      title: "Frontend Team Lead",
-      company: "Enterprise Solutions",
-      location: "Seattle, WA",
-      type: "Full-time",
-      salary: "$140k - $180k",
-      posted: "5 days ago",
-      matchScore: 78,
-      description: "Lead a team of frontend developers in building enterprise applications...",
-      requirements: ["React", "Leadership", "TypeScript", "Team Management"],
-      benefits: ["Health Insurance", "Stock Options", "Paid Time Off", "Training Budget"],
-    },
-  ]
+    // ... other mock jobs
+  ];
 
-  const toggleSaveJob = (jobId: number) => {
-    setSavedJobs((prev) => (prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]))
-  }
+  useEffect(() => {
+    const fetchSavedJobs = async () => {
+      if (user) {
+        try {
+          const jobs = await jobAPI.getSavedJobs(user.id);
+          setSavedJobs(jobs);
+        } catch (error) {
+          console.error("Failed to fetch saved jobs:", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load your saved jobs.",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchSavedJobs();
+  }, [user, toast]);
+
+  const handleSaveJob = async (job: any) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "You must be logged in to save jobs.",
+      });
+      return;
+    }
+
+    const isSaved = savedJobs.some(saved => saved.job_title === job.job_title && saved.company_name === job.company_name);
+
+    if (isSaved) {
+       toast({
+        title: "Already Saved",
+        description: "You have already saved this job.",
+      });
+      return;
+    }
+
+    try {
+      const response = await jobAPI.saveJob({
+        user_id: user.id,
+        job_title: job.job_title,
+        company_name: job.company_name,
+        location: job.location,
+        job_url: job.job_url, // Assuming your job object has this
+      });
+      toast({
+        title: "Job Saved!",
+        description: response.message,
+      });
+      // Refresh saved jobs list
+      const updatedJobs = await jobAPI.getSavedJobs(user.id);
+      setSavedJobs(updatedJobs);
+    } catch (error) {
+      console.error("Failed to save job:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save this job. Please try again.",
+      });
+    }
+  };
 
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600 bg-green-100"
@@ -201,7 +233,7 @@ export default function JobSearch() {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{job.title}</h3>
+                                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{job.job_title}</h3>
                                 <Badge className={`${getMatchScoreColor(job.matchScore)} border-0`}>
                                   {job.matchScore}% Match
                                 </Badge>
@@ -209,7 +241,7 @@ export default function JobSearch() {
                               <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400 mb-3">
                                 <div className="flex items-center gap-1">
                                   <Building className="h-4 w-4" />
-                                  {job.company}
+                                  {job.company_name}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <MapPin className="h-4 w-4" />
@@ -226,10 +258,10 @@ export default function JobSearch() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toggleSaveJob(job.id)}
-                                className={savedJobs.includes(job.id) ? "text-red-600" : ""}
+                                onClick={() => handleSaveJob(job)}
+                                className={savedJobs.some(s => s.job_title === job.job_title && s.company_name === job.company_name) ? "text-red-600" : ""}
                               >
-                                <Heart className={`h-4 w-4 ${savedJobs.includes(job.id) ? "fill-current" : ""}`} />
+                                <Heart className={`h-4 w-4 ${savedJobs.some(s => s.job_title === job.job_title && s.company_name === job.company_name) ? "fill-current" : ""}`} />
                               </Button>
                             </div>
                           </div>
@@ -261,9 +293,9 @@ export default function JobSearch() {
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1 text-green-600">
                                 <DollarSign className="h-4 w-4" />
-                                <span className="font-medium">{job.salary}</span>
+                                <span className="font-medium">{job.salary_range}</span>
                               </div>
-                              <Badge variant="outline">{job.type}</Badge>
+                              <Badge variant="outline">{job.job_type}</Badge>
                             </div>
                             <div className="flex gap-2">
                               <Button variant="outline" size="sm">
@@ -282,7 +314,9 @@ export default function JobSearch() {
 
               <TabsContent value="saved">
                 <div className="space-y-4">
-                  {savedJobs.length === 0 ? (
+                  {isLoading ? (
+                     <Card><CardContent className="p-12 text-center">Loading saved jobs...</CardContent></Card>
+                  ) : savedJobs.length === 0 ? (
                     <Card>
                       <CardContent className="p-12 text-center">
                         <Bookmark className="h-12 w-12 text-slate-400 mx-auto mb-4" />
@@ -293,9 +327,7 @@ export default function JobSearch() {
                       </CardContent>
                     </Card>
                   ) : (
-                    mockJobs
-                      .filter((job) => savedJobs.includes(job.id))
-                      .map((job, index) => (
+                    savedJobs.map((job, index) => (
                         <motion.div
                           key={job.id}
                           initial={{ opacity: 0, y: 20 }}
@@ -308,16 +340,13 @@ export default function JobSearch() {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3 mb-2">
                                     <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                                      {job.title}
+                                      {job.job_title}
                                     </h3>
-                                    <Badge className={`${getMatchScoreColor(job.matchScore)} border-0`}>
-                                      {job.matchScore}% Match
-                                    </Badge>
                                   </div>
                                   <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400 mb-3">
                                     <div className="flex items-center gap-1">
                                       <Building className="h-4 w-4" />
-                                      {job.company}
+                                      {job.company_name}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <MapPin className="h-4 w-4" />
@@ -328,7 +357,7 @@ export default function JobSearch() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => toggleSaveJob(job.id)}
+                                  onClick={() => { /* Add logic to unsave */ }}
                                   className="text-red-600"
                                 >
                                   <Heart className="h-4 w-4 fill-current" />
