@@ -112,6 +112,22 @@ export const interviewAPI = {
     }
     return await response.json();
   },
+  
+  async evaluateTest(questions: any[], answers: any[]) {
+    const response = await fetch("http://localhost:8000/interview/evaluate-test/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ questions, answers }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Backend Error:", errorText);
+      throw new Error("Failed to evaluate test from the backend.");
+    }
+    return await response.json();
+  },
 
   async saveInterview(userId: string, interviewData: Partial<Interview>) {
     const { data, error } = await supabase

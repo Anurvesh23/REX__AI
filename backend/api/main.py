@@ -13,10 +13,11 @@ import json
 import google.generativeai as genai
 from dotenv import load_dotenv
 import docx2txt
-import fitz  # PyMuPDF
+import fitz # PyMuPDF
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import time
+import re # Import re for regex operations
 
 # Create a directory for temporary audio files if it doesn't exist
 if not os.path.exists("temp_audio"):
@@ -79,6 +80,9 @@ class PDFRequest(BaseModel):
 class AiResumePdfRequest(BaseModel):
     optimized_resume_text: str
 
+class EvaluateTestRequest(BaseModel):
+    questions: List[Dict[str, Any]]
+    answers: List[Dict[str, Any]]
 
 # --- PDF Generation Helper ---
 def create_analysis_pdf(data: dict):
@@ -127,15 +131,15 @@ def create_optimized_resume_pdf(text_content: str):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
-
+    
     lines = text_content.split('\n')
-
+    
     for i, line in enumerate(lines):
         line = line.strip()
         if not line:
             pdf.ln(3)
             continue
-
+            
         if line.startswith('**') and line.endswith('**'):
             pdf.set_font("Arial", "B", 12)
             pdf.cell(0, 10, line.strip('*'), 0, 1)
@@ -197,25 +201,15 @@ async def start_skill_test(data: dict = Body(...)):
           "correctAnswer": "The exact string of the correct option from the 'options' array."
         }}
         ```
-
-        **Example for a Software Developer role:**
-        *Technical Question Idea:* "A user reports that a web page is loading slowly. What is the most likely bottleneck to investigate first: database query performance, frontend rendering, network latency, or server-side code execution?"
-        *Behavioral Question Idea:* "Describe a time you disagreed with a technical decision made by your team lead. How did you handle it, and what was the outcome?"
-
-        Now, generate the {num_questions} questions following these rules precisely.
         """
         response = model.generate_content(prompt)
-        # Clean the response to ensure it's valid JSON
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
-
-        # Attempt to parse the JSON, with error handling
+        
         try:
             questions = json.loads(json_response_text)
-            # Ensure the response is a list
             if not isinstance(questions, list):
                 raise ValueError("AI response is not a JSON array.")
         except json.JSONDecodeError:
-            # If parsing fails, try to find a JSON array within the response
             match = re.search(r'\[\s*\{.*\}\s*\]', json_response_text, re.DOTALL)
             if match:
                 questions = json.loads(match.group(0))
@@ -223,7 +217,6 @@ async def start_skill_test(data: dict = Body(...)):
                 raise ValueError("No valid JSON array found in the AI response.")
 
 
-        # Assign sequential IDs for consistency
         for i, q in enumerate(questions):
             q['id'] = i + 1
 
@@ -231,11 +224,61 @@ async def start_skill_test(data: dict = Body(...)):
 
     except Exception as e:
         print(f"Error calling Gemini API for questions: {e}")
-        # Provide a more detailed error response to the frontend
         return JSONResponse(
             status_code=500,
             content={"message": f"An error occurred while generating AI questions: {str(e)}"}
         )
+
+# NEW: Endpoint to evaluate the entire test
+@app.post("/interview/evaluate-test/")
+async def evaluate_test(request: EvaluateTestRequest):
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        As an expert career coach, analyze the results of a mock test. The user's answers are provided along with the original questions.
+
+        **Input Data:**
+        - Questions: {json.dumps(request.questions)}
+        - User's Answers: {json.dumps(request.answers)}
+
+        **Task:**
+        Provide a comprehensive analysis in a strict JSON format. Do not include any text or markdown outside of the JSON object.
+
+        **Analysis Steps:**
+        1.  **Calculate Category Scores:** Based on the user's correct answers, calculate the percentage score for each category present in the questions (e.g., 'technical', 'behavioral').
+        2.  **Generate Per-Answer Feedback:** For each answer, provide a brief, one-sentence feedback explaining why the selected answer was correct or incorrect, and what the correct answer is.
+        3.  **Generate Overall Feedback:** Write a concise paragraph summarizing the user's overall performance, highlighting strengths and weaknesses.
+        4.  **Generate Actionable Suggestions:** Provide at least 3 specific, actionable suggestions for improvement based on the user's incorrect answers.
+
+        **Required JSON Output Structure:**
+        ```json
+        {{
+          "category_scores": {{
+            "technical": number,
+            "behavioral": number
+          }},
+          "detailed_feedback": [
+            {{
+              "question_id": number,
+              "feedback": "string"
+            }}
+          ],
+          "overall_feedback": "string",
+          "suggestions": ["string", "string", "string"]
+        }}
+        ```
+        """
+        response = model.generate_content(prompt)
+        json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
+        analysis_result = json.loads(json_response_text)
+        
+        return analysis_result
+
+    except Exception as e:
+        print(f"Error during test evaluation: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
 
 # NEW Endpoint for Text-to-Speech
 @app.post("/interview/speak/")
@@ -245,7 +288,7 @@ async def speak_text(request: SpeakRequest):
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join("temp_audio", filename)
         tts.save(filepath)
-
+        
         # In a production app, you'd return a full URL
         # For local dev, this relative path works with the static mount
         audio_url = f"/temp_audio/{filename}"
@@ -266,7 +309,7 @@ def analyze_resume(
         temp_path = save_upload_to_temp(file)
         resume_text = extract_text_from_path(temp_path)
         model = genai.GenerativeModel('gemini-1.5-flash')
-
+        
         prompt = f"""
         **Objective:** Analyze the provided resume against the job description with high accuracy and provide a detailed, structured JSON response.
 
@@ -316,11 +359,11 @@ def analyze_resume(
         }}
         ```
         """
-
+        
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         analysis_result = json.loads(json_response_text)
-
+        
         os.remove(temp_path)
         return analysis_result
     except Exception as e:

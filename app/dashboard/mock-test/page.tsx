@@ -14,6 +14,7 @@ import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
 import { startInterview, interviewAPI } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
+import { useToast } from "@/components/ui/use-toast" // Import useToast
 
 interface InterviewSettings {
   num_questions: number;
@@ -27,6 +28,7 @@ type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | 
 
 export default function MockTestPage() {
   const { user } = useAuth()
+  const { toast } = useToast(); // Initialize toast
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
     num_questions: 20,
@@ -49,16 +51,21 @@ export default function MockTestPage() {
     setCurrentStep("generating");
 
     try {
-      const data = await startInterview(newSettings.job_role, newSettings.difficulty, newSettings.num_questions);
-      if (data.questions && data.questions.length > 0) {
-        setQuestions(data.questions);
+      // Using interviewAPI.generateQuestions for consistency
+      const data = await interviewAPI.generateQuestions(newSettings.job_role, newSettings.difficulty, { num_questions: newSettings.num_questions });
+      if (data && data.length > 0) {
+        setQuestions(data);
         setCurrentStep("guidelines");
       } else {
         throw new Error("AI did not return any questions.");
       }
     } catch (error) {
       console.error("Failed to generate questions:", error);
-      alert("There was an error generating questions from the AI. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "There was an error generating questions. Please try again.",
+      });
       setCurrentStep("selection"); 
     }
   }
@@ -67,40 +74,69 @@ export default function MockTestPage() {
     setCurrentStep("interview");
   }
 
-  const handleInterviewComplete = (answers: any[]) => {
-    const correctAnswers = answers.filter(a => a.is_correct).length;
-    const totalQuestions = questions.length;
-    const overallScore = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+  const handleInterviewComplete = async (answers: any[]) => {
+    setCurrentStep("generating"); // Show a loading state while evaluating
+    try {
+      // Get detailed analysis from the new backend endpoint
+      const analysis = await interviewAPI.evaluateTest(questions, answers);
 
-    const results = {
-      questions,
-      answers,
-      overall_score: overallScore,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      category_scores: {
-        clarity: Math.floor(Math.random() * 20) + 80,
-        confidence: Math.floor(Math.random() * 20) + 75,
-        technical_knowledge: Math.floor(Math.random() * 25) + 70,
-        communication: Math.floor(Math.random() * 15) + 85,
-      },
-      feedback: "Overall, a strong performance with clear and concise answers. To improve, try to provide more specific examples for behavioral questions.",
-      suggestions: [
-        "Practice the STAR method for behavioral questions to structure your answers better.",
-        "Review common data structures and algorithms to improve technical speed.",
-        "Consider recording yourself to analyze your communication style and body language.",
-      ],
-      duration_minutes: Math.round(
-        answers.reduce((acc, a) => acc + a.time_taken, 0) / 60
-      ),
+      // Combine frontend calculations with backend analysis
+      const correctAnswersCount = answers.filter(a => a.is_correct).length;
+      const totalQuestions = questions.length;
+      const overallScore = totalQuestions > 0 ? Math.round((correctAnswersCount / totalQuestions) * 100) : 0;
+
+      // Merge feedback from analysis into the answers array
+      const answersWithFeedback = answers.map(answer => {
+        const feedbackItem = analysis.detailed_feedback.find((f: any) => f.question_id === answer.question_id);
+        return {
+          ...answer,
+          feedback: feedbackItem ? feedbackItem.feedback : "No feedback available.",
+          // A mock score for display, can be refined further
+          score: answer.is_correct ? 10 : Math.floor(Math.random() * 3) + 4, 
+        };
+      });
+
+      const results = {
+        questions,
+        answers: answersWithFeedback,
+        overall_score: overallScore,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswersCount,
+        category_scores: analysis.category_scores,
+        feedback: analysis.overall_feedback,
+        suggestions: analysis.suggestions,
+        duration_minutes: Math.round(
+          answers.reduce((acc, a) => acc + a.time_taken, 0) / 60
+        ),
+      }
+
+      if (user) {
+        // Here you could save the enhanced results object to Supabase
+        // interviewAPI.saveInterview(user.id, results);
+      }
+
+      setInterviewResults(results)
+      setCurrentStep("results")
+    } catch (error) {
+      console.error("Failed to evaluate test:", error);
+      toast({
+          variant: "destructive",
+          title: "Evaluation Error",
+          description: "Could not get performance feedback from the AI. Please try again.",
+      });
+      // Fallback to showing results without AI feedback if evaluation fails
+      const correctAnswers = answers.filter(a => a.is_correct).length;
+      const totalQuestions = questions.length;
+      setInterviewResults({
+          questions,
+          answers,
+          overall_score: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          //... provide some default/fallback data here
+      });
+      setCurrentStep("results");
     }
-
-    if (user) {
-      interviewAPI.saveInterview(user.id, results);
-    }
-
-    setInterviewResults(results)
-    setCurrentStep("results")
   }
 
   const handleRestart = () => {
@@ -127,7 +163,7 @@ export default function MockTestPage() {
             settings={settings}
             onComplete={handleInterviewComplete}
           />
-        ) : <GeneratingQuestions />;
+        ) : <GeneratingQuestions />; // Show loader if questions aren't ready
       case "results":
         return interviewResults && <FeedbackDisplay results={interviewResults} onRestartInterview={handleRestart} />
       default:
