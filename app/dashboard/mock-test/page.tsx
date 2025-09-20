@@ -24,7 +24,7 @@ interface InterviewSettings {
   time_limit: boolean;
 }
 
-type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "results";
+type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "evaluating" | "results";
 
 export default function MockTestPage() {
   const { user } = useAuth()
@@ -39,12 +39,12 @@ export default function MockTestPage() {
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [interviewResults, setInterviewResults] = useState<any>(null)
-  
+
   const handleRoleSelect = (role: string) => {
     setSettings((prev) => ({ ...prev, job_role: role }));
     setCurrentStep("difficulty");
   }
-  
+
   const handleDifficultySelect = async (difficulty: "easy" | "medium" | "hard") => {
     const newSettings = { ...settings, difficulty };
     setSettings(newSettings);
@@ -66,22 +66,23 @@ export default function MockTestPage() {
         title: "Error",
         description: "There was an error generating questions. Please try again.",
       });
-      setCurrentStep("selection"); 
+      setCurrentStep("selection");
     }
   }
-  
+
   const handleStartTest = () => {
     setCurrentStep("interview");
   }
 
   const handleInterviewComplete = async (answers: any[]) => {
-    setCurrentStep("generating"); // Show a loading state while evaluating
+    setCurrentStep("evaluating"); // Show evaluating state
     try {
       // Get detailed analysis from the new backend endpoint
       const analysis = await interviewAPI.evaluateTest(questions, answers);
 
       // Combine frontend calculations with backend analysis
       const correctAnswersCount = answers.filter(a => a.is_correct).length;
+      const answeredQuestionsCount = answers.filter(a => a.selected_answer !== null).length;
       const totalQuestions = questions.length;
       const overallScore = totalQuestions > 0 ? Math.round((correctAnswersCount / totalQuestions) * 100) : 0;
 
@@ -92,7 +93,7 @@ export default function MockTestPage() {
           ...answer,
           feedback: feedbackItem ? feedbackItem.feedback : "No feedback available.",
           // A mock score for display, can be refined further
-          score: answer.is_correct ? 10 : Math.floor(Math.random() * 3) + 4, 
+          score: answer.is_correct ? 10 : Math.floor(Math.random() * 3) + 4,
         };
       });
 
@@ -102,6 +103,7 @@ export default function MockTestPage() {
         overall_score: overallScore,
         total_questions: totalQuestions,
         correct_answers: correctAnswersCount,
+        answered_questions: answeredQuestionsCount,
         category_scores: analysis.category_scores,
         feedback: analysis.overall_feedback,
         suggestions: analysis.suggestions,
@@ -126,6 +128,7 @@ export default function MockTestPage() {
       });
       // Fallback to showing results without AI feedback if evaluation fails
       const correctAnswers = answers.filter(a => a.is_correct).length;
+      const answeredQuestions = answers.filter(a => a.selected_answer !== null).length;
       const totalQuestions = questions.length;
       setInterviewResults({
           questions,
@@ -133,6 +136,7 @@ export default function MockTestPage() {
           overall_score: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
           total_questions: totalQuestions,
           correct_answers: correctAnswers,
+          answered_questions: answeredQuestions,
           //... provide some default/fallback data here
       });
       setCurrentStep("results");
@@ -153,7 +157,17 @@ export default function MockTestPage() {
       case "difficulty":
         return <DifficultySelection role={settings.job_role} onSelectDifficulty={handleDifficultySelect} />
       case "generating":
-        return <GeneratingQuestions />;
+        return <GeneratingQuestions
+            title="Preparing Your Assessment"
+            description="Our AI is crafting personalized questions based on your requirements"
+            loadingText="Generating questions..."
+        />;
+      case "evaluating":
+        return <GeneratingQuestions
+            title="Evaluating Your Answers"
+            description="Our AI is analyzing your performance and generating feedback."
+            loadingText="Evaluating answers..."
+        />;
       case "guidelines":
         return <Guidelines role={settings.job_role} settings={settings} onStartTest={handleStartTest} />
       case "interview":
@@ -163,7 +177,11 @@ export default function MockTestPage() {
             settings={settings}
             onComplete={handleInterviewComplete}
           />
-        ) : <GeneratingQuestions />; // Show loader if questions aren't ready
+        ) : <GeneratingQuestions
+            title="Preparing Your Assessment"
+            description="Our AI is crafting personalized questions based on your requirements"
+            loadingText="Generating questions..."
+        />; // Show loader if questions aren't ready
       case "results":
         return interviewResults && <FeedbackDisplay results={interviewResults} onRestartInterview={handleRestart} />
       default:

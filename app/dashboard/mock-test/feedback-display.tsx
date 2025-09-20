@@ -35,6 +35,7 @@ interface FeedbackDisplayProps {
     difficulty: string;
     total_questions: number;
     correct_answers: number;
+    answered_questions: number;
   }
   onRestartInterview: () => void
 }
@@ -95,7 +96,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
       text: `I scored ${results.overall_score}/100 on the ${results.difficulty} ${results.job_role} mock test on Rex--AI! Check out the platform to practice for your interviews.`,
       url: window.location.href,
     };
-    
+
     if (navigator.share) {
       try {
         await navigator.share(shareData);
@@ -129,7 +130,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
         <CardContent>
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-8">
             <div className="relative w-40 h-40">
-               <Image 
+               <Image
                 src={results.overall_score >= 70 ? "/images/performance-good.png" : "/images/performance-bad.png"}
                 alt="Performance Gauge"
                 width={160}
@@ -150,7 +151,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
           <div className="grid md:grid-cols-3 gap-6">
             <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <MessageSquare className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600">{results.answers.length}/{results.total_questions}</div>
+              <div className="text-2xl font-bold text-blue-600">{results.answered_questions}/{results.total_questions}</div>
               <div className="text-sm text-slate-600 dark:text-slate-400">Questions Answered</div>
             </div>
             <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -230,7 +231,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="performance">
           <Card>
             <CardHeader>
