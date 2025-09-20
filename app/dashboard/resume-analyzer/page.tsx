@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
-import { extractTextFromFile } from "@/lib/utils" // Assuming you have a util function for this
+import { extractTextFromFile } from "@/lib/utils"
 
 export default function ResumeAnalyzerPage() {
     const { user } = useAuth()
@@ -28,25 +28,48 @@ export default function ResumeAnalyzerPage() {
     const [coverLetterContent, setCoverLetterContent] = useState("")
     const [isDownloadingAiResume, setIsDownloadingAiResume] = useState(false);
 
-    // This function generates a template for an AI-optimized resume.
     const generateOptimizedResumePreview = (originalText: string, analysis: any): string => {
         if (!analysis) return originalText;
 
         const userName = user?.user_metadata?.full_name || "Your Name";
         const userEmail = user?.email || "your.email@example.com";
+        // You might want to get phone and location from user profile or prompt the user for it
+        const userPhone = "[Your Phone Number]"; // Consider adding this to user profile or a separate input
+        const userLocation = "[Your Location]"; // Consider adding this to user profile or a separate input
+        const userLinkedIn = "[your-linkedin-url]"; // Consider adding this to user profile or a separate input
 
         // Helper to extract sections from the original resume text
         const getSectionText = (sectionTitle: string, fullText: string): string => {
-            const regex = new RegExp(`(?<=\\n${sectionTitle}\\n)([\\s\\S]*?)(?=\\n[A-Z][A-Z\\s]+\\n|$)`, 'i');
+            // This regex tries to find a section title (e.g., "SUMMARY") followed by content,
+            // until another uppercase section title or the end of the document.
+            // It's a best-effort approach and might need tweaking based on resume formats.
+            const regex = new RegExp(`^${sectionTitle}\\s*\\n([\\s\\S]*?)(?=\\n^[A-Z][A-Z\\s]*\\n|$)`, 'im');
             const match = fullText.match(regex);
-            return match ? match[1].trim() : `[Could not automatically extract your ${sectionTitle.toLowerCase()} section. Please review and update.]`;
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+            return `[Could not automatically extract your ${sectionTitle.toLowerCase()} section. Please review your original resume and update this section manually in the generated PDF.]`;
         };
 
         const missingKeywords = analysis.keywords_missing || [];
-        
-        // Placeholder sections extracted from original text
+        const aiSuggestions = analysis.suggestions || [];
+
+        // Extract sections from the original resume
+        const originalSummary = getSectionText("SUMMARY", originalText);
+        const originalSkills = getSectionText("SKILLS", originalText);
         const originalExperience = getSectionText("EXPERIENCE", originalText);
         const originalEducation = getSectionText("EDUCATION", originalText);
+        const originalCertifications = getSectionText("LICENSES & CERTIFICATIONS", originalText) || getSectionText("CERTIFICATIONS", originalText);
+
+
+        // Construct AI insights for each section
+        const summaryInsight = aiSuggestions.filter((s:any) => s.category === "Content" && s.title.toLowerCase().includes("summary"))
+                               .map((s:any) => s.description).join(' ');
+        const skillsInsight = aiSuggestions.filter((s:any) => s.category === "Keywords" || (s.category === "Content" && s.title.toLowerCase().includes("skills")))
+                               .map((s:any) => s.description).join(' ');
+        const experienceInsight = aiSuggestions.filter((s:any) => s.category === "Experience")
+                                  .map((s:any) => s.description).join(' ');
+
 
         return `
 ===================================================
@@ -58,29 +81,27 @@ incorporating the AI analysis of your resume against the job description.
 
 ---------------------------------------------------
 ${userName.toUpperCase()}
-${userEmail} | [Your Phone Number] | [Your Location]
-LinkedIn: [your-linkedin-url]
+${userEmail} | ${userPhone} | ${userLocation}
+LinkedIn: ${userLinkedIn}
 ---------------------------------------------------
 
 **SUMMARY**
-(AI Insight: Your summary has been refined to be more concise and impactful, directly targeting the job description.)
+(AI Insight: ${summaryInsight || 'Your summary has been refined for conciseness and impact, targeting the job description.'})
 
-Motivated and results-oriented professional with a specialization in [Your Main Field]. Highly proficient in [Skill 1], [Skill 2], and [Skill 3], complemented by hands-on experience in [Your Industry/Domain]. Passionate about building secure, high-performance solutions and adept at integrating missing keywords like [${missingKeywords.slice(0, 2).join(", ")}] to better align with target roles.
+${originalSummary}
 
 ---------------------------------------------------
 
 **SKILLS**
-(AI Insight: This section is organized for clarity and includes keywords from the job description.)
+(AI Insight: ${skillsInsight || 'This section is organized for clarity. Consider integrating missing keywords for better alignment.'})
 
-* **Languages:** [List your languages]
-* **Frameworks/Libraries:** [List your frameworks]
-* **Cloud & DevOps:** [List your cloud skills]
-* **Keywords to Integrate:** ${missingKeywords.join(', ')}
+${originalSkills}
+${missingKeywords.length > 0 ? `* **Keywords to Integrate:** ${missingKeywords.join(', ')}` : ''}
 
 ---------------------------------------------------
 
 **EXPERIENCE**
-(AI Insight: Bullet points should be rephrased using the STAR method for greater impact.)
+(AI Insight: ${experienceInsight || 'Bullet points are rephrased using the STAR method for greater impact and to include quantifiable achievements.'})
 
 ${originalExperience}
 
@@ -90,6 +111,13 @@ ${originalExperience}
 
 ${originalEducation}
 
+${originalCertifications && originalCertifications !== "[Could not automatically extract your certifications section. Please review your original resume and update this section manually in the generated PDF.]" ? `
+---------------------------------------------------
+
+**LICENSES & CERTIFICATIONS**
+
+${originalCertifications}
+` : ''}
 ===================================================
                       END OF REVISION
 ===================================================
