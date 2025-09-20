@@ -92,6 +92,33 @@ export const resumeAPI = {
     },
 
     /**
+     * Generates a PDF report for a resume analysis from the backend. (Secured)
+     */
+    async generateAnalysisReport(reportData: any): Promise<Blob> {
+        const config = await createAuthenticatedRequest('POST', reportData);
+        const response = await fetch(`${API_BASE_URL}/generate-analysis-pdf/`, config);
+
+        if (!response.ok) {
+            throw new Error("Failed to generate PDF report from the backend.");
+        }
+        return response.blob();
+    },
+
+    /**
+     * Generates a PDF of the AI-optimized resume from the backend. (Secured)
+     */
+    async generateAiResumePdf(optimizedResumeText: string): Promise<Blob> {
+        const payload = { optimized_resume_text: optimizedResumeText };
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/generate-ai-resume-pdf/`, config);
+
+        if (!response.ok) {
+            throw new Error("Failed to generate AI resume PDF from the backend.");
+        }
+        return response.blob();
+    },
+
+    /**
      * Retrieves all past resume analyses for a user directly from Supabase.
      */
     async getUserResumes(userId: string): Promise<Resume[]> {
