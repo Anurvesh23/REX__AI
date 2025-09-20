@@ -13,11 +13,11 @@ import json
 import google.generativeai as genai
 from dotenv import load_dotenv
 import docx2txt
-import fitz # PyMuPDF
+import fitz  # PyMuPDF
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import time
-import re # Import re for regex operations
+import re
 
 # Create a directory for temporary audio files if it doesn't exist
 if not os.path.exists("temp_audio"):
@@ -83,6 +83,16 @@ class AiResumePdfRequest(BaseModel):
 class EvaluateTestRequest(BaseModel):
     questions: List[Dict[str, Any]]
     answers: List[Dict[str, Any]]
+
+class TestReportRequest(BaseModel):
+    overall_score: int
+    job_role: str
+    difficulty: str
+    total_questions: int
+    correct_answers: int
+    duration_minutes: int
+    answers: List[Dict[str, Any]]
+    questions: List[Dict[str, Any]]
 
 # --- PDF Generation Helper ---
 def create_analysis_pdf(data: dict):
@@ -164,6 +174,52 @@ def create_optimized_resume_pdf(text_content: str):
     pdf.output(temp_pdf_path)
     return temp_pdf_path
 
+def create_test_report_pdf(data: TestReportRequest):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Rex--AI Mock Test Report", 0, 1, "C")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, f"Role: {data.job_role} ({data.difficulty.capitalize()})", 0, 1)
+    pdf.cell(0, 10, f"Final Score: {data.overall_score}/100", 0, 1)
+    pdf.ln(5)
+
+    # Summary Stats
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 8, f"Summary: {data.correct_answers} out of {data.total_questions} correct in {data.duration_minutes} minutes.", 0, 1)
+    pdf.ln(10)
+
+    # Answer Review Section
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Answer Review", 0, 1)
+    
+    for answer_data in data.answers:
+        question = next((q for q in data.questions if q['id'] == answer_data['question_id']), None)
+        if not question:
+            continue
+        
+        pdf.set_font("Arial", "B", 10)
+        pdf.multi_cell(0, 5, f"Q: {question['question']}")
+
+        pdf.set_font("Arial", "", 10)
+        if answer_data['is_correct']:
+            pdf.set_text_color(34, 139, 34) # Forest Green
+            pdf.multi_cell(0, 5, f"  Your Answer (Correct): {answer_data.get('selected_answer', 'Skipped')}")
+        else:
+            pdf.set_text_color(220, 20, 60) # Crimson
+            pdf.multi_cell(0, 5, f"  Your Answer (Incorrect): {answer_data.get('selected_answer', 'Skipped')}")
+            pdf.set_text_color(34, 139, 34)
+            pdf.multi_cell(0, 5, f"  Correct Answer: {answer_data.get('correct_answer')}")
+
+        pdf.set_text_color(0, 0, 0) # Reset to black
+        pdf.ln(4)
+
+    _, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+    pdf.output(temp_pdf_path)
+    return temp_pdf_path
+
 
 # --- AI Skill Test Endpoints ---
 
@@ -172,64 +228,40 @@ async def start_skill_test(data: dict = Body(...)):
     role = data.get("role", "Software Developer")
     difficulty = data.get("difficulty", "Medium")
     num_questions = data.get("num_questions", 10)
-
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
-        As an expert interviewer, generate {num_questions} unique and high-quality multiple-choice questions for a '{role}' position at a '{difficulty}' difficulty level. Ensure a good mix of technical and behavioral questions relevant to the role.
+        As an expert interviewer, generate {num_questions} unique, high-quality, and tricky multiple-choice questions for a '{role}' position at a '{difficulty}' difficulty level.
 
         **Instructions for question generation:**
-        1.  **Uniqueness:** Generate entirely new questions. Avoid repeating common or easily searchable questions. Use the current timestamp ({time.time()}) to ensure freshness.
-        2.  **Relevance:** Questions must be directly applicable to the '{role}' role. For technical questions, focus on practical scenarios and problem-solving. For behavioral questions, use situations a person in this role might face.
-        3.  **Clarity:** Questions and options should be clear, concise, and unambiguous.
-        4.  **Plausible Distractors:** Incorrect options (distractors) should be plausible but clearly incorrect to a knowledgeable candidate.
-        5.  **Strict JSON Output:** Return ONLY a valid JSON array of objects. Do not include any introductory text, markdown formatting like ```json, or any other text outside of the JSON structure.
+        1.  **Tricky Options:** The incorrect options (distractors) must be highly plausible and related to common misconceptions. The correct answer should not be obviously longer or more detailed than the distractors. All options should be concise and similar in length.
+        2.  **Test Nuance:** Questions should test a deep, nuanced understanding of concepts, not just simple definitions.
+        3.  **Strict JSON Output:** Return ONLY a valid JSON array of objects. Do not include any text or markdown formatting like ```json.
 
         **JSON Object Structure (per question):**
         ```json
         {{
-          "id": "A unique integer for each question",
-          "question": "The full text of the question.",
+          "id": "A unique integer",
+          "question": "The question text.",
           "category": "technical or behavioral",
           "difficulty": "{difficulty}",
-          "options": [
-            "Option A",
-            "Option B",
-            "Option C",
-            "Option D"
-          ],
-          "correctAnswer": "The exact string of the correct option from the 'options' array."
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correctAnswer": "The exact string of the correct option."
         }}
         ```
         """
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         
-        try:
-            questions = json.loads(json_response_text)
-            if not isinstance(questions, list):
-                raise ValueError("AI response is not a JSON array.")
-        except json.JSONDecodeError:
-            match = re.search(r'\[\s*\{.*\}\s*\]', json_response_text, re.DOTALL)
-            if match:
-                questions = json.loads(match.group(0))
-            else:
-                raise ValueError("No valid JSON array found in the AI response.")
-
-
+        questions = json.loads(json_response_text)
         for i, q in enumerate(questions):
             q['id'] = i + 1
-
         return {"questions": questions}
-
     except Exception as e:
         print(f"Error calling Gemini API for questions: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"message": f"An error occurred while generating AI questions: {str(e)}"}
-        )
+        return JSONResponse(status_code=500, content={"message": f"Error generating AI questions: {str(e)}"})
 
-# NEW: Endpoint to evaluate the entire test
+
 @app.post("/interview/evaluate-test/")
 async def evaluate_test(request: EvaluateTestRequest):
     try:
@@ -279,8 +311,16 @@ async def evaluate_test(request: EvaluateTestRequest):
         print(f"Error during test evaluation: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
 
+@app.post("/interview/generate-report-pdf/")
+async def generate_test_report_pdf(request: TestReportRequest):
+    try:
+        pdf_path = create_test_report_pdf(request)
+        return FileResponse(pdf_path, media_type='application/pdf', filename=f"{request.job_role}_Mock_Test_Report.pdf")
+    except Exception as e:
+        print(f"Error generating test report PDF: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
 
-# NEW Endpoint for Text-to-Speech
+
 @app.post("/interview/speak/")
 async def speak_text(request: SpeakRequest):
     try:
@@ -289,16 +329,12 @@ async def speak_text(request: SpeakRequest):
         filepath = os.path.join("temp_audio", filename)
         tts.save(filepath)
         
-        # In a production app, you'd return a full URL
-        # For local dev, this relative path works with the static mount
         audio_url = f"/temp_audio/{filename}"
         return {"audio_url": audio_url}
     except Exception as e:
         print(f"Error generating speech: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
 
-
-# --- Resume Analyzer Endpoint ---
 
 @app.post("/analyze/")
 def analyze_resume(
@@ -369,8 +405,6 @@ def analyze_resume(
     except Exception as e:
         print(f"Error during resume analysis: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
-
-# --- Additional Endpoints ---
 
 @app.post("/generate-cover-letter/")
 async def generate_cover_letter(request: CoverLetterRequest):
