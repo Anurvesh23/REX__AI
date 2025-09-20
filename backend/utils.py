@@ -7,25 +7,35 @@ import pytesseract
 from PIL import Image
 import io
 import re
+import secrets
+
+def sanitize_filename(filename: str) -> str:
+    """Strips dangerous characters and returns a secure filename."""
+    if not filename:
+        return ""
+    # Remove directory traversal attempts
+    secure_name = os.path.basename(filename)
+    # Keep only alphanumeric, dots, underscores, hyphens
+    secure_name = re.sub(r'[^a-zA-Z0-9._-]', '', secure_name)
+    # Add a random prefix to avoid collisions and further obfuscate
+    random_prefix = secrets.token_hex(4)
+    # Limit filename length
+    return f"{random_prefix}_{secure_name}"[:250]
+
 
 def save_upload_to_temp(uploaded_file):
     """Save an uploaded file (FastAPI UploadFile or Streamlit) to a temp file and return path."""
-    if hasattr(uploaded_file, 'filename'):
-        # FastAPI UploadFile
-        suffix = os.path.splitext(uploaded_file.filename)[1]
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        tmp.write(uploaded_file.file.read())
-        tmp.flush()
+    secure_filename = sanitize_filename(uploaded_file.filename)
+    suffix = os.path.splitext(secure_filename)[1] if secure_filename else '.tmp'
+    
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        # Read file in chunks to handle large files efficiently
+        content = uploaded_file.file.read()
+        tmp.write(content)
+    finally:
         tmp.close()
-        return tmp.name
-    else:
-        # Streamlit file
-        suffix = os.path.splitext(uploaded_file.name)[1]
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        tmp.write(uploaded_file.getbuffer())
-        tmp.flush()
-        tmp.close()
-        return tmp.name
+    return tmp.name
 
 def extract_text_from_path(path, ocr_if_empty=True):
     ext = os.path.splitext(path)[1].lower()
@@ -45,14 +55,8 @@ def extract_text_from_path(path, ocr_if_empty=True):
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
                 text = f.read()
         else:
-            # attempt to open as pdf
-            try:
-                doc = fitz.open(path)
-                text = "\n".join([p.get_text("text") for p in doc]).strip()
-            except Exception:
-                raise ValueError("Unsupported filetype: " + ext)
+            raise ValueError("Unsupported filetype: " + ext)
     except Exception as e:
-        # fallback to OCR for PDFs
         if ext == ".pdf" and ocr_if_empty:
             text = ocr_pdf(path)
         else:

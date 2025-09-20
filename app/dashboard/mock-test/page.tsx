@@ -12,9 +12,9 @@ import GeneratingQuestions from "./generating-questions"
 import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
-import { startInterview, interviewAPI } from "@/lib/api"
+import { interviewAPI } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
-import { useToast } from "@/components/ui/use-toast" // Import useToast
+import { useToast } from "@/components/ui/use-toast"
 
 interface InterviewSettings {
   num_questions: number;
@@ -28,7 +28,7 @@ type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | 
 
 export default function MockTestPage() {
   const { user } = useAuth()
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
     num_questions: 20,
@@ -51,7 +51,6 @@ export default function MockTestPage() {
     setCurrentStep("generating");
 
     try {
-      // Using interviewAPI.generateQuestions for consistency
       const data = await interviewAPI.generateQuestions(newSettings.job_role, newSettings.difficulty, { num_questions: newSettings.num_questions });
       if (data && data.length > 0) {
         setQuestions(data);
@@ -75,26 +74,17 @@ export default function MockTestPage() {
   }
 
   const handleInterviewComplete = async (answers: any[]) => {
-    setCurrentStep("evaluating"); // Show evaluating state
+    setCurrentStep("evaluating");
     try {
-      // Get detailed analysis from the new backend endpoint
       const analysis = await interviewAPI.evaluateTest(questions, answers);
-
-      // Combine frontend calculations with backend analysis
       const correctAnswersCount = answers.filter(a => a.is_correct).length;
       const answeredQuestionsCount = answers.filter(a => a.selected_answer !== null).length;
       const totalQuestions = questions.length;
       const overallScore = totalQuestions > 0 ? Math.round((correctAnswersCount / totalQuestions) * 100) : 0;
 
-      // Merge feedback from analysis into the answers array
       const answersWithFeedback = answers.map(answer => {
         const feedbackItem = analysis.detailed_feedback.find((f: any) => f.question_id === answer.question_id);
-        return {
-          ...answer,
-          feedback: feedbackItem ? feedbackItem.feedback : "No feedback available.",
-          // A mock score for display, can be refined further
-          score: answer.is_correct ? 10 : Math.floor(Math.random() * 3) + 4,
-        };
+        return { ...answer, feedback: feedbackItem ? feedbackItem.feedback : "No feedback available." };
       });
 
       const results = {
@@ -107,26 +97,40 @@ export default function MockTestPage() {
         category_scores: analysis.category_scores,
         feedback: analysis.overall_feedback,
         suggestions: analysis.suggestions,
-        duration_minutes: Math.round(
-          answers.reduce((acc, a) => acc + a.time_taken, 0) / 60
-        ),
+        duration_minutes: Math.round(answers.reduce((acc, a) => acc + a.time_taken, 0) / 60),
       }
 
+      setInterviewResults(results);
+      
+      // --- Database Storage Enabled ---
       if (user) {
-        // Here you could save the enhanced results object to Supabase
-        // interviewAPI.saveInterview(user.id, results);
+        try {
+          await interviewAPI.saveInterview(user.id, results);
+          toast({
+            title: "Success!",
+            description: "Your interview results have been saved to your profile.",
+          });
+        } catch (saveError) {
+          console.error("Failed to save interview results:", saveError);
+          toast({
+            variant: "destructive",
+            title: "Save Error",
+            description: "Your results were processed, but we couldn't save them to your account.",
+          });
+        }
       }
+      
+      setCurrentStep("results");
 
-      setInterviewResults(results)
-      setCurrentStep("results")
     } catch (error) {
       console.error("Failed to evaluate test:", error);
       toast({
           variant: "destructive",
           title: "Evaluation Error",
-          description: "Could not get performance feedback from the AI. Please try again.",
+          description: "Could not get performance feedback from the AI.",
       });
-      // Fallback to showing results without AI feedback if evaluation fails
+      
+      // Fallback to showing results without detailed AI feedback if evaluation fails
       const correctAnswers = answers.filter(a => a.is_correct).length;
       const answeredQuestions = answers.filter(a => a.selected_answer !== null).length;
       const totalQuestions = questions.length;
@@ -137,7 +141,6 @@ export default function MockTestPage() {
           total_questions: totalQuestions,
           correct_answers: correctAnswers,
           answered_questions: answeredQuestions,
-          //... provide some default/fallback data here
       });
       setCurrentStep("results");
     }
@@ -158,30 +161,22 @@ export default function MockTestPage() {
         return <DifficultySelection role={settings.job_role} onSelectDifficulty={handleDifficultySelect} />
       case "generating":
         return <GeneratingQuestions
-            title="Preparing Your Assessment"
-            description="Our AI is crafting personalized questions based on your requirements"
-            loadingText="Generating questions..."
+          title="Preparing Your Assessment"
+          description="Our AI is crafting personalized questions based on your requirements."
+          loadingText="Generating questions..."
         />;
       case "evaluating":
         return <GeneratingQuestions
-            title="Evaluating Your Answers"
-            description="Our AI is analyzing your performance and generating feedback."
-            loadingText="Evaluating answers..."
+          title="Evaluating Your Answers"
+          description="Our AI is analyzing your performance and generating feedback."
+          loadingText="Evaluating answers..."
         />;
       case "guidelines":
         return <Guidelines role={settings.job_role} settings={settings} onStartTest={handleStartTest} />
       case "interview":
         return questions.length > 0 ? (
-          <InterviewSession
-            questions={questions}
-            settings={settings}
-            onComplete={handleInterviewComplete}
-          />
-        ) : <GeneratingQuestions
-            title="Preparing Your Assessment"
-            description="Our AI is crafting personalized questions based on your requirements"
-            loadingText="Generating questions..."
-        />; // Show loader if questions aren't ready
+          <InterviewSession questions={questions} settings={settings} onComplete={handleInterviewComplete} />
+        ) : <GeneratingQuestions title="Loading Test..." description="Please wait a moment." loadingText="Loading..." />;
       case "results":
         return interviewResults && <FeedbackDisplay results={interviewResults} onRestartInterview={handleRestart} />
       default:

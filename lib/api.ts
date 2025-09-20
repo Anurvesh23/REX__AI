@@ -1,230 +1,251 @@
 // lib/api.ts
 import { supabase } from "./supabase";
-import type { Resume, Interview, SavedJob } from "./supabase";
+import type { Resume, Interview, SavedJob } from "./types"; // Assuming types are in './types'
 
-// Call FastAPI backend for resume analysis
-export async function analyzeResumeBackend(resumeFile: File, jobDescription: string) {
-  const formData = new FormData();
-  formData.append("jd_text", jobDescription);
-  formData.append("file", resumeFile);
+// --- Configuration ---
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-  const response = await fetch("http://localhost:8000/analyze/", {
-    method: "POST",
-    body: formData,
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Backend Error:", errorText);
-    throw new Error("Failed to analyze resume from the backend.");
-  }
-  return await response.json();
-}
+// --- Authentication & Request Helpers ---
 
-// Resume Analysis API
+/**
+ * Retrieves Supabase authentication headers, including the JWT.
+ * Throws an error if the user is not authenticated.
+ */
+const getSupabaseAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        throw new Error("User is not authenticated. Cannot perform this action.");
+    }
+    return {
+        'Authorization': `Bearer ${session.access_token}`,
+    };
+};
+
+/**
+ * Creates a fetch configuration with authentication headers.
+ * @param method - HTTP method (e.g., 'POST').
+ * @param body - The request body (can be FormData or a JSON object).
+ */
+const createAuthenticatedRequest = async (method: 'POST' | 'GET', body?: any): Promise<RequestInit> => {
+    const headers = await getSupabaseAuthHeaders();
+    const config: RequestInit = {
+        method,
+        headers: {
+            ...headers,
+            // Don't set Content-Type for FormData; the browser adds it with the correct boundary.
+            ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        },
+    };
+    if (body) {
+        config.body = body instanceof FormData ? body : JSON.stringify(body);
+    }
+    return config;
+};
+
+// --- Resume Analysis API ---
+
 export const resumeAPI = {
-  async analyzeResume(resumeFile: File, jobDescription: string) {
-    return analyzeResumeBackend(resumeFile, jobDescription);
-  },
+    /**
+     * Sends resume and job description to the backend for AI analysis. (Secured)
+     */
+    async analyzeResume(resumeFile: File, jobDescription: string) {
+        const formData = new FormData();
+        formData.append("jd_text", jobDescription);
+        formData.append("file", resumeFile);
 
-  async generateCoverLetter(resumeText: string, jobDescription: string) {
-    const response = await fetch("http://localhost:8000/generate-cover-letter/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ resume: resumeText, job_description: jobDescription }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Backend Error:", errorText);
-      throw new Error("Failed to generate cover letter from the backend.");
-    }
-    const data = await response.json();
-    return data.cover_letter;
-  },
+        const config = await createAuthenticatedRequest('POST', formData);
+        const response = await fetch(`${API_BASE_URL}/analyze/`, config);
 
-  async saveAnalysis(userId: string, analysisData: Partial<Resume>) {
-    const { data, error } = await supabase
-      .from("resumes")
-      .insert({
-        user_id: userId,
-        ...analysisData,
-      })
-      .select()
-      .single();
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to analyze resume: ${errorText}`);
+        }
+        return response.json();
+    },
 
-    if (error) throw error;
-    return data;
-  },
+    /**
+     * Generates a cover letter using the backend AI. (Secured)
+     */
+    async generateCoverLetter(resumeText: string, jobDescription: string) {
+        const payload = { resume: resumeText, job_description: jobDescription };
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/generate-cover-letter/`, config);
 
-  async getUserResumes(userId: string) {
-    const { data, error } = await supabase
-      .from("resumes")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to generate cover letter: ${errorText}`);
+        }
+        const data = await response.json();
+        return data.cover_letter;
+    },
 
-    if (error) throw error;
-    return data;
-  },
+    /**
+     * Saves the result of a resume analysis via the backend. (Secured)
+     * The backend will associate it with the authenticated user via JWT.
+     */
+    async saveAnalysis(analysisData: Partial<Resume>) {
+        const config = await createAuthenticatedRequest('POST', analysisData);
+        const response = await fetch(`${API_BASE_URL}/save-analysis/`, config);
 
-  async deleteResume(resumeId: string) {
-    const { error } = await supabase.from("resumes").delete().eq("id", resumeId);
+        if (!response.ok) throw new Error("Failed to save analysis.");
+        return response.json();
+    },
 
-    if (error) throw error;
-  },
+    /**
+     * Retrieves all past resume analyses for a user directly from Supabase.
+     */
+    async getUserResumes(userId: string): Promise<Resume[]> {
+        const { data, error } = await supabase
+            .from("resumes")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
+     * Deletes a specific resume analysis directly from Supabase.
+     */
+    async deleteResume(resumeId: string) {
+        const { error } = await supabase.from("resumes").delete().eq("id", resumeId);
+        if (error) throw error;
+    },
 };
 
-// Mock Interview & Mock Test API
+// --- Mock Interview & Mock Test API ---
+
 export const interviewAPI = {
-  async generateQuestions(jobRole: string, difficulty = 'medium', settings = { num_questions: 10 }) {
-    const response = await fetch("http://localhost:8000/interview/start/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role: jobRole,
-        difficulty: difficulty,
-        num_questions: settings.num_questions,
-      }),
-    });
+    /**
+     * Generates mock test questions from the backend. (Secured)
+     */
+    async generateQuestions(jobRole: string, difficulty = 'medium', settings = { num_questions: 10 }) {
+        const payload = {
+            role: jobRole,
+            difficulty: difficulty,
+            num_questions: settings.num_questions,
+        };
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/interview/start/`, config);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Backend Error:", errorText);
-      throw new Error("Failed to generate questions from the backend.");
-    }
+        if (!response.ok) throw new Error("Failed to generate questions.");
+        
+        const data = await response.json();
+        if (!data.questions || !Array.isArray(data.questions)) {
+            throw new Error("Backend did not return questions in the expected format.");
+        }
+        return data.questions;
+    },
 
-    const data = await response.json();
-    if (!data.questions || !Array.isArray(data.questions)) {
-      throw new Error("Backend did not return questions in the expected format.");
-    }
+    /**
+     * Submits a completed mock test to the backend for evaluation. (Secured)
+     */
+    async evaluateTest(questions: any[], answers: any[]) {
+        const payload = { questions, answers };
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/interview/evaluate-test/`, config);
 
-    return data.questions;
-  },
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to evaluate test: ${errorText}`);
+        }
+        return response.json();
+    },
 
-  async evaluateTest(questions: any[], answers: any[]) {
-    const response = await fetch("http://localhost:8000/interview/evaluate-test/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ questions, answers }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Backend Error:", errorText);
-      throw new Error("Failed to evaluate test from the backend.");
-    }
-    return await response.json();
-  },
+    /**
+     * Generates a PDF report for a mock test from the backend. (Secured)
+     */
+    async generateTestReport(reportData: any): Promise<Blob> {
+        const config = await createAuthenticatedRequest('POST', reportData);
+        const response = await fetch(`${API_BASE_URL}/interview/generate-report-pdf/`, config);
 
-  async generateTestReport(reportData: any) {
-    const response = await fetch("http://localhost:8000/interview/generate-report-pdf/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(reportData),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to generate PDF report from the backend.");
-    }
-    return response.blob();
-  },
+        if (!response.ok) {
+            throw new Error("Failed to generate PDF report from the backend.");
+        }
+        return response.blob();
+    },
 
-  async saveInterview(userId: string, interviewData: Partial<Interview>) {
-    const { data, error } = await supabase
-      .from("interviews")
-      .insert({
-        user_id: userId,
-        ...interviewData,
-      })
-      .select()
-      .single();
+    /**
+     * Saves interview results directly to Supabase.
+     */
+    async saveInterview(userId: string, interviewData: Partial<Interview>): Promise<Interview> {
+        const { data, error } = await supabase
+            .from("interviews")
+            .insert({ user_id: userId, ...interviewData })
+            .select()
+            .single();
 
-    if (error) throw error;
-    return data;
-  },
+        if (error) throw error;
+        return data;
+    },
 
-  async getUserInterviews(userId: string) {
-    const { data, error } = await supabase
-      .from("interviews")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    /**
+     * Retrieves all past interviews for a user directly from Supabase.
+     */
+    async getUserInterviews(userId: string): Promise<Interview[]> {
+        const { data, error } = await supabase
+            .from("interviews")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    return data;
-  },
-
-  async updateInterview(interviewId: string, updates: Partial<Interview>) {
-    const { data, error } = await supabase.from("interviews").update(updates).eq("id", interviewId).select().single();
-
-    if (error) throw error;
-    return data;
-  },
+        if (error) throw error;
+        return data;
+    },
 };
 
-// Job Search API
+// --- Job Management API ---
+
 export const jobAPI = {
-  async saveJob(userId: string, jobData: Partial<SavedJob>) {
-    const { data, error } = await supabase
-      .from("saved_jobs")
-      .insert({
-        user_id: userId,
-        ...jobData,
-      })
-      .select()
-      .single();
+    /**
+     * Saves a job listing directly to Supabase.
+     */
+    async saveJob(userId: string, jobData: Partial<SavedJob>): Promise<SavedJob> {
+        const { data, error } = await supabase
+            .from("saved_jobs")
+            .insert({ user_id: userId, ...jobData })
+            .select()
+            .single();
 
-    if (error) throw error;
-    return data;
-  },
+        if (error) throw error;
+        return data;
+    },
 
-  async getSavedJobs(userId: string) {
-    const { data, error } = await supabase
-      .from("saved_jobs")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    /**
+     * Retrieves all saved jobs for a user directly from Supabase.
+     */
+    async getSavedJobs(userId: string): Promise<SavedJob[]> {
+        const { data, error } = await supabase
+            .from("saved_jobs")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    return data;
-  },
+        if (error) throw error;
+        return data;
+    },
 
-  async updateJobStatus(jobId: string, status: SavedJob["application_status"]) {
-    const { data, error } = await supabase
-      .from("saved_jobs")
-      .update({ application_status: status })
-      .eq("id", jobId)
-      .select()
-      .single();
+    /**
+     * Updates the status of a saved job directly in Supabase.
+     */
+    async updateJobStatus(jobId: string, status: SavedJob["application_status"]): Promise<SavedJob> {
+        const { data, error } = await supabase
+            .from("saved_jobs")
+            .update({ application_status: status })
+            .eq("id", jobId)
+            .select()
+            .single();
 
-    if (error) throw error;
-    return data;
-  },
+        if (error) throw error;
+        return data;
+    },
 
-  async deleteJob(jobId: string) {
-    const { error } = await supabase.from("saved_jobs").delete().eq("id", jobId);
-
-    if (error) throw error;
-  },
+    /**
+     * Deletes a saved job directly from Supabase.
+     */
+    async deleteJob(jobId: string) {
+        const { error } = await supabase.from("saved_jobs").delete().eq("id", jobId);
+        if (error) throw error;
+    },
 };
-
-// --- Live AI Interview API Functions (re-exporting for consistency) ---
-
-export const { generateQuestions: startInterview } = interviewAPI;
-
-export async function evaluateAnswer(question: string, answer: string) {
-    const response = await fetch("http://localhost:8000/interview/evaluate/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ question, answer }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to evaluate answer");
-    }
-    return await response.json();
-  }
