@@ -1,6 +1,8 @@
+// app/dashboard/mock-interview/_components/video-interview.tsx
+
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, ReactNode } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +39,13 @@ interface Question {
   category: string;
 }
 
+interface AnalysisReport {
+  overall_score: number;
+  category_scores: Record<string, number>;
+  feedback: string;
+  suggestions: string[];
+}
+
 const getSpeechAudio = async (text: string) => {
   try {
     const data = await mockAPI.speak(text);
@@ -64,6 +73,7 @@ export default function VideoInterview({
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [audioError, setAudioError] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [analysisReport, setAnalysisReport] = useState<AnalysisReport | null>(null);
 
   const modelRef =
     useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
@@ -138,9 +148,22 @@ export default function VideoInterview({
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1)
+    if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
+    } else {
+      // End of interview, get analysis report
+      // This is a mock implementation. You would typically send the user's answers to the backend.
+      const mockAnswers = questions.map((q) => ({
+        question_id: q.id,
+        is_correct: Math.random() > 0.5,
+      }));
+
+      mockAPI.evaluateAnswers({ questions, answers: mockAnswers }).then((report: AnalysisReport) => {
+        setAnalysisReport(report);
+      });
+    }
   };
+
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) setCurrentQuestionIndex((prev) => prev - 1);
   };
@@ -158,18 +181,23 @@ export default function VideoInterview({
 
         if (face && face.length > 0) {
           const keypoints = face[0].keypoints;
-          const nose = keypoints[4];
+          const nose = keypoints.find(
+            (point) => point.name === "noseTip"
+          );
 
-          if (!baselinePosition.current) {
-            setTimeout(() => {
-              baselinePosition.current = { x: nose.x, y: nose.y };
-            }, 2000);
-          } else {
-            const dx = Math.abs(nose.x - baselinePosition.current.x);
-            const dy = Math.abs(nose.y - baselinePosition.current.y);
+          if (nose) {
+            if (!baselinePosition.current) {
+              setTimeout(() => {
+                baselinePosition.current = { x: nose.x, y: nose.y };
+              }, 2000);
+            } else {
+              const dx = Math.abs(nose.x - baselinePosition.current.x);
+              const dy = Math.abs(nose.y - baselinePosition.current.y);
 
-            if (dx > 100 || dy > 100) {
-              handleWarning("Please do not move your head.");
+              // Increased threshold for head movement
+              if (dx > 150 || dy > 150) {
+                handleWarning("Please do not move your head.");
+              }
             }
           }
         } else {
@@ -206,6 +234,37 @@ export default function VideoInterview({
   }, [detectMotion]);
 
   const currentQuestion = questions[currentQuestionIndex];
+
+  if (analysisReport) {
+    return (
+      <div className="bg-slate-900 text-white min-h-screen flex flex-col p-4 md:p-6 lg:p-8 font-sans">
+        <h1 className="text-2xl font-bold mb-4">Interview Analysis Report</h1>
+        <Card className="bg-slate-800 border-slate-700">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold mb-2">Overall Score: {analysisReport.overall_score}%</h2>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              {Object.entries(analysisReport.category_scores).map(([category, score]) => (
+                <div key={category}>
+                  <p className="capitalize">{category.replace("_", " ")}</p>
+                  <p className="text-lg font-bold">{score as ReactNode}%</p>
+                </div>
+              ))}
+            </div>
+            <p className="mb-4">{analysisReport.feedback}</p>
+            <h3 className="font-bold mb-2">Suggestions:</h3>
+            <ul>
+              {analysisReport.suggestions.map((suggestion: string, index: number) => (
+                <li key={index}>- {suggestion}</li>
+              ))}
+            </ul>
+            <Button onClick={onEndInterview} className="mt-4">
+              Back to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-900 text-white min-h-screen flex flex-col p-4 md:p-6 lg:p-8 font-sans">
@@ -350,10 +409,9 @@ export default function VideoInterview({
                 </Button>
                 <Button
                   variant="outline"
-                  size="icon"
                   onClick={handleNextQuestion}
-                  disabled={currentQuestionIndex === questions.length - 1}
                 >
+                  {currentQuestionIndex === questions.length - 1 ? "Finish" : "Next Question"}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -375,9 +433,6 @@ export default function VideoInterview({
             onPlay={() => setIsAiSpeaking(true)}
             onEnded={() => {
               setIsAiSpeaking(false);
-              setTimeout(() => {
-                handleNextQuestion();
-              }, 2000);
             }}
             className="hidden"
           />

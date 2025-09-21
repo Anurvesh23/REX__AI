@@ -1,3 +1,5 @@
+# backend/api/main.py
+
 # --- Core Imports ---
 import tempfile
 import sys
@@ -192,6 +194,16 @@ class SaveJobRequest(BaseModel):
     location: Optional[str] = None
     job_url: Optional[str] = None
     application_status: str = "Saved"
+
+class EvaluateAnswersRequest(BaseModel):
+    questions: List[Dict[str, Any]]
+    answers: List[Dict[str, Any]]
+
+class AnalysisReport(BaseModel):
+    overall_score: int
+    category_scores: Dict[str, int]
+    feedback: str
+    suggestions: List[str]
 
 
 # --- PDF Generation Helpers ---
@@ -441,6 +453,55 @@ async def evaluate_test(request: Request, data: EvaluateTestRequest, user_id: st
         return json.loads(json_response_text)
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
+
+@app.post("/interview/evaluate-answers/")
+@limiter.limit("10 per minute")
+async def evaluate_answers(
+    request: Request,
+    data: EvaluateAnswersRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Evaluates the user's answers and returns an analysis report.
+    """
+    try:
+        # Mock evaluation logic
+        correct_answers = 0
+        for answer in data.answers:
+            if answer.get("is_correct"):
+                correct_answers += 1
+        
+        overall_score = (correct_answers / len(data.questions)) * 100 if data.questions else 0
+
+        # Mock category scores and feedback
+        category_scores = {
+            "clarity": 80,
+            "confidence": 75,
+            "technical_knowledge": 85,
+            "communication": 90,
+        }
+        feedback = "Overall, you performed well. You demonstrated strong technical knowledge and clear communication. To improve, try to be more concise in your answers."
+        suggestions = [
+            "Practice the STAR method for behavioral questions.",
+            "Review common data structures and algorithms.",
+            "Record yourself answering questions to improve your delivery.",
+        ]
+
+        report = AnalysisReport(
+            overall_score=int(overall_score),
+            category_scores=category_scores,
+            feedback=feedback,
+            suggestions=suggestions,
+        )
+
+        # Save the report to the database
+        # (You would typically save this to the mock_interviews table)
+
+        return report
+    except Exception as e:
+        print(f"Error during answer evaluation for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/interview/speak/")
 @limiter.limit("20 per minute")

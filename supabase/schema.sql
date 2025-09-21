@@ -1,3 +1,5 @@
+-- supabase/schema.sql
+
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -57,6 +59,7 @@ CREATE TABLE mock_interviews (
     }'::jsonb,
     feedback TEXT,
     suggestions JSONB DEFAULT '[]'::jsonb,
+    analysis_report JSONB, -- Added this line
     duration_minutes INTEGER,
     status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'abandoned')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

@@ -1,3 +1,5 @@
+// lib/api.ts
+
 import { supabase } from "./supabase";
 import type {
   Resume,
@@ -230,6 +232,23 @@ export const mockAPI = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to evaluate test: ${errorText}`);
+    }
+    return response.json();
+  },
+
+  /**
+   * Submits answers from a video interview for evaluation. (Secured)
+   */
+  async evaluateAnswers(payload: { questions: any[]; answers: any[] }) {
+    const config = await createAuthenticatedRequest("POST", payload);
+    const response = await fetch(
+      `${API_BASE_URL}/interview/evaluate-answers/`,
+      config
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to evaluate answers: ${errorText}`);
     }
     return response.json();
   },
