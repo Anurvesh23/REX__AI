@@ -18,7 +18,7 @@ import {
   Share,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { interviewAPI } from "@/lib/api"
+import { mockAPI } from "@/lib/api"
 
 interface FeedbackDisplayProps {
   results: {
@@ -71,7 +71,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
             job_role: results.job_role || "Selected Role",
             difficulty: results.difficulty || "Medium",
         };
-        const blob = await interviewAPI.generateTestReport(reportData);
+        const blob = await mockAPI.generateTestReport(reportData);
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;

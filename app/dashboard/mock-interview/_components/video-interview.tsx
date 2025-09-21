@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Loader2, Mic, Volume2, ShieldAlert, PlayCircle } from 'lucide-react';
-import { interviewAPI } from '@/lib/api';
+import { mockAPI } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -66,7 +66,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const data = await interviewAPI.generateQuestions(interviewDetails.title, 'medium', {num_questions: 10});
+        const data = await mockAPI.generateQuestions(interviewDetails.title, 'medium', {num_questions: 10});
         setQuestions(data);
       } catch (error) {
         console.error("Failed to fetch interview questions:", error);
@@ -245,7 +245,11 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
                                 Click to Play Question
                             </Button>
                         )}
-                        {!isLoading && !audioError && !isAiSpeaking && <p className="text-slate-400">Listen for the next question...</p>}
+                        {!isLoading && !audioError && currentQuestion && (
+                            <p className="text-lg text-slate-300">
+                                {currentQuestion.question}
+                            </p>
+                        )}
                     </CardContent>
                 </Card>
 
