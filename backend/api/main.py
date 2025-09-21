@@ -543,7 +543,7 @@ async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depe
         response = supabase.table('mock_tests').insert(insert_data).execute()
 
         if hasattr(response, 'error') and response.error:
-            raise Exception(response.error.message)
+             raise Exception(response.error.message)
 
         return {"message": f"Test results for user {user_id} saved successfully!"}
     except Exception as e:
@@ -581,7 +581,7 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
         response = supabase.table('mock_interviews').insert(insert_data).execute()
 
         if hasattr(response, 'error') and response.error:
-            raise Exception(response.error.message)
+             raise Exception(response.error.message)
 
         return {"message": f"Interview results for user {user_id} saved successfully!"}
     except Exception as e:
