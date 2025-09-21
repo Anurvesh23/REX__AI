@@ -275,7 +275,12 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
              <audio 
                 ref={audioRef} 
                 onPlay={() => setIsAiSpeaking(true)}
-                onEnded={() => setIsAiSpeaking(false)}
+                onEnded={() => {
+                      setIsAiSpeaking(false);
+                      setTimeout(() => {
+                      handleNextQuestion();
+                   }, 2000);
+                }}
                 className="hidden"
              />
         </div>
