@@ -1,15 +1,16 @@
 // app/dashboard/mock-interview/page.tsx
 "use client"
 
-import { useState } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Search, SlidersHorizontal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InterviewCard from "./_components/interview-card";
-import DeviceSetup from "./_components/device-setup";
-import VideoInterview from "./_components/video-interview";
+
+const DeviceSetup = lazy(() => import("./_components/device-setup"));
+const VideoInterview = lazy(() => import("./_components/video-interview"));
 
 const interviews = {
     technical: [
@@ -61,6 +62,12 @@ interface InterviewDetails {
     company: string;
 }
 
+const LoadingSpinner = () => (
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-900">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
+    </div>
+);
+
 export default function MockInterviewPage() {
     const [interviewState, setInterviewState] = useState<InterviewState>('selection');
     const [selectedInterview, setSelectedInterview] = useState<InterviewDetails | null>(null);
@@ -89,19 +96,27 @@ export default function MockInterviewPage() {
     };
 
     if (interviewState === 'setup' && selectedInterview) {
-        return <DeviceSetup 
+        return (
+            <Suspense fallback={<LoadingSpinner />}>
+                <DeviceSetup 
                     interviewTitle={selectedInterview.title} 
                     onSetupComplete={handleSetupComplete}
                     onCancel={handleCancelSetup}
-                />;
+                />
+            </Suspense>
+        );
     }
 
     if (interviewState === 'active' && selectedInterview) {
-        return <VideoInterview 
+        return (
+            <Suspense fallback={<LoadingSpinner />}>
+                <VideoInterview 
                     interviewDetails={selectedInterview} 
                     userStream={userStream} 
                     onEndInterview={handleEndInterview} 
-                />;
+                />
+            </Suspense>
+        );
     }
 
     return (

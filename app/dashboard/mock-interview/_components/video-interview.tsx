@@ -1,7 +1,7 @@
 // app/dashboard/mock-interview/_components/video-interview.tsx
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -63,6 +63,18 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   const baselinePosition = useRef<{ x: number; y: number } | null>(null);
   const requestRef = useRef<number>();
 
+  const handleWarning = useCallback((message: string) => {
+    setWarningMessage(message);
+    setWarnings(prev => {
+        const newWarnings = prev + 1;
+        if (newWarnings >= 3) {
+            onEndInterview();
+        }
+        return newWarnings;
+    });
+    setTimeout(() => setWarningMessage(null), 3000);
+  }, [onEndInterview]);
+
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -84,7 +96,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   }, [userStream]);
 
   useEffect(() => {
-    if (questions.length > 0) {
+    if (questions.length > 0 && currentQuestionIndex < questions.length) {
       const currentQuestion = questions[currentQuestionIndex];
       setIsAiSpeaking(true);
       setAudioError(false);
@@ -114,22 +126,14 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   const handleNextQuestion = () => { if (currentQuestionIndex < questions.length - 1) setCurrentQuestionIndex(prev => prev + 1); };
   const handlePrevQuestion = () => { if (currentQuestionIndex > 0) setCurrentQuestionIndex(prev => prev - 1); };
 
-  const handleWarning = (message: string) => {
-    setWarningMessage(message);
-    setWarnings(prev => prev + 1);
-    setTimeout(() => setWarningMessage(null), 3000);
-  };
-
-  useEffect(() => { if (warnings >= 3) onEndInterview(); }, [warnings, onEndInterview]);
-
-  const detectMotion = async () => {
+  const detectMotion = useCallback(async () => {
     if (
-      typeof userVideoRef.current !== "undefined" &&
-      userVideoRef.current !== null &&
-      userVideoRef.current.readyState === 4
+      userVideoRef.current &&
+      userVideoRef.current.readyState === 4 &&
+      modelRef.current
     ) {
       const video = userVideoRef.current;
-      const face = await modelRef.current?.estimateFaces(video);
+      const face = await modelRef.current.estimateFaces(video);
 
       if (face && face.length > 0) {
         const keypoints = face[0].keypoints;
@@ -160,7 +164,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
       }
     }
     requestRef.current = requestAnimationFrame(detectMotion);
-  };
+  }, [handleWarning]);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -179,7 +183,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, []);
+  }, [detectMotion]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
