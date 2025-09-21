@@ -58,6 +58,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
   const [warnings, setWarnings] = useState(0);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [audioError, setAudioError] = useState(false);
+  const [modelLoaded, setModelLoaded] = useState(false);
 
   const modelRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const baselinePosition = useRef<{ x: number; y: number } | null>(null);
@@ -130,41 +131,38 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
     if (
       userVideoRef.current &&
       userVideoRef.current.readyState === 4 &&
-      modelRef.current
+      modelRef.current &&
+      modelLoaded
     ) {
-      const video = userVideoRef.current;
-      const face = await modelRef.current.estimateFaces(video);
+      try {
+        const video = userVideoRef.current;
+        const face = await modelRef.current.estimateFaces(video);
 
-      if (face && face.length > 0) {
-        const keypoints = face[0].keypoints;
-        const nose = keypoints[4]; 
+        if (face && face.length > 0) {
+          const keypoints = face[0].keypoints;
+          const nose = keypoints[4]; 
 
-        if (!baselinePosition.current) {
-          setTimeout(() => {
-            baselinePosition.current = { x: nose.x, y: nose.y };
-          }, 2000);
+          if (!baselinePosition.current) {
+            setTimeout(() => {
+              baselinePosition.current = { x: nose.x, y: nose.y };
+            }, 2000);
+          } else {
+            const dx = Math.abs(nose.x - baselinePosition.current.x);
+            const dy = Math.abs(nose.y - baselinePosition.current.y);
+
+            if (dx > 100 || dy > 100) {
+              handleWarning("Please do not move your head.");
+            }
+          }
         } else {
-          const dx = Math.abs(nose.x - baselinePosition.current.x);
-          const dy = Math.abs(nose.y - baselinePosition.current.y);
-
-          if (dx > 100 || dy > 100) {
-            handleWarning("Please stay in your seat.");
-          }
-
-          const leftEye = keypoints[33];
-          const rightEye = keypoints[263];
-          const eyeCenterX = (leftEye.x + rightEye.x) / 2;
-
-          if (Math.abs(nose.x - eyeCenterX) > 20) {
-            handleWarning("Please keep your eyes on the screen.");
-          }
+          handleWarning("No face detected. Please remain visible.");
         }
-      } else {
-        handleWarning("No face detected. Please remain visible.");
+      } catch (error) {
+        console.error("Face detection error:", error);
       }
     }
     requestRef.current = requestAnimationFrame(detectMotion);
-  }, [handleWarning]);
+  }, [handleWarning, modelLoaded]);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -174,6 +172,7 @@ export default function VideoInterview({ interviewDetails, userStream, onEndInte
             { runtime: 'tfjs', refineLandmarks: true } as MediaPipeFaceMeshTfjsModelConfig
         );
         modelRef.current = model;
+        setModelLoaded(true);
         requestRef.current = requestAnimationFrame(detectMotion);
     };
     loadModel();
