@@ -19,13 +19,19 @@ export interface ResumeAnalysis {
   created_at: string;
   job_title: string;
   overall_score: number;
+  job_description: string;
+  suggestions: any[];
+  keywords_matched: string[];
+  keywords_missing: string[];
+  strengths: string[];
+  weaknesses: string[];
 }
 
 /**
  * Defines the structure for a completed mock interview session.
  * This version includes detailed metrics for a comprehensive review.
  */
-export interface Interview {
+export interface MockInterview {
   id: string;
   user_id: string;
   created_at: string;
@@ -42,6 +48,28 @@ export interface Interview {
   questions: any[]; // The full list of questions asked
   answers: any[];   // The user's answers, including feedback for each
 }
+
+/**
+* Defines the structure for a completed mock test session.
+*/
+export interface MockTest {
+    id: string;
+    user_id: string;
+    created_at: string;
+    job_role: string;
+    difficulty: "easy" | "medium" | "hard";
+    overall_score: number;
+    total_questions: number;
+    correct_answers: number;
+    answered_questions: number;
+    category_scores: Record<string, number>;
+    feedback: string;
+    suggestions: string[];
+    duration_minutes: number;
+    questions: any[];
+    answers: any[];
+}
+
 
 /**
  * Defines the possible application statuses for a saved job.

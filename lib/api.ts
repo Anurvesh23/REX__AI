@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Resume, Interview, SavedJob, ResumeAnalysis } from "./types";
+import type { Resume, MockInterview, MockTest, SavedJob, ResumeAnalysis } from "./types";
 
 // --- Configuration ---
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -77,7 +77,7 @@ export const resumeAPI = {
         const data = await response.json();
         return data.cover_letter;
     },
-    
+
     /**
      * Sends original resume and JD to the backend for a full AI rewrite. (Secured)
      */
@@ -158,7 +158,7 @@ export const resumeAPI = {
 
 // --- Mock Interview & Mock Test API ---
 
-export const interviewAPI = {
+export const mockAPI = {
     /**
      * Generates mock test questions from the backend. (Secured)
      */
@@ -172,7 +172,7 @@ export const interviewAPI = {
         const response = await fetch(`${API_BASE_URL}/interview/start/`, config);
 
         if (!response.ok) throw new Error("Failed to generate questions.");
-        
+
         const data = await response.json();
         if (!data.questions || !Array.isArray(data.questions)) {
             throw new Error("Backend did not return questions in the expected format.");
@@ -209,11 +209,24 @@ export const interviewAPI = {
     },
 
     /**
-     * Saves interview results via the backend. (Secured)
-     * The user_id is handled by the backend via the JWT.
+     * Saves mock test results via the backend. (Secured)
      */
-    async saveInterview(interviewData: Partial<Interview>) {
-        // user_id is not needed in the payload as the backend gets it from the token
+    async saveTest(testData: Partial<MockTest>) {
+        const { user_id, ...payload } = testData;
+        const config = await createAuthenticatedRequest('POST', payload);
+        const response = await fetch(`${API_BASE_URL}/save-test/`, config);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to save test results: ${errorText}`);
+        }
+        return response.json();
+    },
+
+    /**
+     * Saves interview results via the backend. (Secured)
+     */
+    async saveInterview(interviewData: Partial<MockInterview>) {
         const { user_id, ...payload } = interviewData;
         const config = await createAuthenticatedRequest('POST', payload);
         const response = await fetch(`${API_BASE_URL}/save-interview/`, config);
@@ -226,11 +239,25 @@ export const interviewAPI = {
     },
 
     /**
+     * Retrieves all past mock tests for a user directly from Supabase.
+     */
+    async getUserMockTests(userId: string): Promise<MockTest[]> {
+        const { data, error } = await supabase
+            .from("mock_tests")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
      * Retrieves all past interviews for a user directly from Supabase.
      */
-    async getUserInterviews(userId: string): Promise<Interview[]> {
+    async getUserInterviews(userId: string): Promise<MockInterview[]> {
         const { data, error } = await supabase
-            .from("interviews")
+            .from("mock_interviews")
             .select("*")
             .eq("user_id", userId)
             .order("created_at", { ascending: false });

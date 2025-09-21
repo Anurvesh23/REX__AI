@@ -10,7 +10,7 @@ import PasswordSettings from "./_components/password-settings";
 import AccountSettings from "./_components/account-settings";
 import NotificationSettings from "./_components/notification-settings";
 import ResumeAnalysisHistory from "./_components/resume-analysis-history";
-import MockInterviewHistory from "./_components/mock-interview-history";
+import MockHistory from "./_components/mock-interview-history";
 
 type SettingsTab = "profile" | "account" | "password" | "notifications" | "resume" | "interviews" | "saved" | "submissions";
 
@@ -30,7 +30,7 @@ export default function SettingsPage() {
       case "resume":
         return <ResumeAnalysisHistory />;
       case "interviews":
-        return <MockInterviewHistory />;
+        return <MockHistory />;
       default:
         return (
           <div className="p-8 text-center">

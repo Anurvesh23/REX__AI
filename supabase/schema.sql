@@ -35,8 +35,8 @@ CREATE TABLE resumes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Interviews table
-CREATE TABLE interviews (
+-- Mock Interviews table
+CREATE TABLE mock_interviews (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     job_role TEXT NOT NULL,
@@ -62,6 +62,25 @@ CREATE TABLE interviews (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Mock Tests table
+CREATE TABLE mock_tests (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    job_role TEXT NOT NULL,
+    difficulty TEXT,
+    questions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    answers JSONB NOT NULL DEFAULT '[]'::jsonb,
+    overall_score INTEGER CHECK (overall_score >= 0 AND overall_score <= 100),
+    category_scores JSONB,
+    feedback TEXT,
+    suggestions JSONB,
+    duration_minutes INTEGER,
+    status TEXT DEFAULT 'completed',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 
 -- Job searches table (for tracking saved jobs and applications)
 CREATE TABLE job_searches (
@@ -112,15 +131,18 @@ CREATE TABLE user_settings (
 -- Create indexes for better performance
 CREATE INDEX idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX idx_resumes_created_at ON resumes(created_at DESC);
-CREATE INDEX idx_interviews_user_id ON interviews(user_id);
-CREATE INDEX idx_interviews_created_at ON interviews(created_at DESC);
+CREATE INDEX idx_mock_interviews_user_id ON mock_interviews(user_id);
+CREATE INDEX idx_mock_interviews_created_at ON mock_interviews(created_at DESC);
+CREATE INDEX idx_mock_tests_user_id ON mock_tests(user_id);
+CREATE INDEX idx_mock_tests_created_at ON mock_tests(created_at DESC);
 CREATE INDEX idx_saved_jobs_user_id ON saved_jobs(user_id);
 CREATE INDEX idx_saved_jobs_status ON saved_jobs(application_status);
 
 -- Row Level Security (RLS) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resumes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE interviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mock_interviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mock_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_searches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
@@ -134,10 +156,15 @@ CREATE POLICY "Users can insert own resumes" ON resumes FOR INSERT WITH CHECK (a
 CREATE POLICY "Users can update own resumes" ON resumes FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own resumes" ON resumes FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own interviews" ON interviews FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own interviews" ON interviews FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own interviews" ON interviews FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own interviews" ON interviews FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own mock interviews" ON mock_interviews FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own mock interviews" ON mock_interviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own mock interviews" ON mock_interviews FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own mock interviews" ON mock_interviews FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own mock tests" ON mock_tests FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own mock tests" ON mock_tests FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own mock tests" ON mock_tests FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own mock tests" ON mock_tests FOR DELETE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view own job searches" ON job_searches FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own job searches" ON job_searches FOR INSERT WITH CHECK (auth.uid() = user_id);
