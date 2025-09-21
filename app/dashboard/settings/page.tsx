@@ -9,8 +9,10 @@ import ProfileSettings from "./_components/profile-settings";
 import PasswordSettings from "./_components/password-settings";
 import AccountSettings from "./_components/account-settings";
 import NotificationSettings from "./_components/notification-settings";
+import ResumeAnalysisHistory from "./_components/resume-analysis-history";
+import MockInterviewHistory from "./_components/mock-interview-history";
 
-type SettingsTab = "profile" | "account" | "password" | "notifications" | "resume" | "saved" | "submissions";
+type SettingsTab = "profile" | "account" | "password" | "notifications" | "resume" | "interviews" | "saved" | "submissions";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
@@ -25,6 +27,10 @@ export default function SettingsPage() {
         return <AccountSettings />;
       case "notifications":
         return <NotificationSettings />;
+      case "resume":
+        return <ResumeAnalysisHistory />;
+      case "interviews":
+        return <MockInterviewHistory />;
       default:
         return (
           <div className="p-8 text-center">

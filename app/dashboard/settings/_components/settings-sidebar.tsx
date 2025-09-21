@@ -4,10 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { User, FileText, Bookmark, Send, Settings, Lock, Bell, LogOut } from "lucide-react";
+import { User, FileText, Bookmark, Send, Settings, Lock, Bell, LogOut, History } from "lucide-react";
 import Link from "next/link";
 
-type SettingsTab = "profile" | "account" | "password" | "notifications" | "resume" | "saved" | "submissions";
+type SettingsTab = "profile" | "account" | "password" | "notifications" | "resume" | "interviews" | "saved" | "submissions";
 
 interface SettingsSidebarProps {
   activeTab: SettingsTab;
@@ -19,8 +19,9 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
 
   const navItems = [
     { id: "profile", label: "My Profile", icon: User },
-    { id: "resume", label: "Resume", icon: FileText, isLink: true, href: "/dashboard/resume-analyzer" },
-    { id: "saved", label: "Saved", icon: Bookmark, isLink: true, href: "/dashboard/job-search" },
+    { id: "resume", label: "Resume Analyses", icon: History },
+    { id: "interviews", label: "Interview History", icon: History },
+    { id: "saved", label: "Saved Jobs", icon: Bookmark, isLink: true, href: "/dashboard/job-search" },
     { id: "submissions", label: "My Submissions", icon: Send },
     { id: "account", label: "Account Settings", icon: Settings },
     { id: "password", label: "Password", icon: Lock },

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Resume, Interview, SavedJob } from "./types";
+import type { Resume, Interview, SavedJob, ResumeAnalysis } from "./types";
 
 // --- Configuration ---
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -136,7 +136,7 @@ export const resumeAPI = {
     /**
      * Retrieves all past resume analyses for a user directly from Supabase.
      */
-    async getUserResumes(userId: string): Promise<Resume[]> {
+    async getUserResumes(userId: string): Promise<ResumeAnalysis[]> {
         const { data, error } = await supabase
             .from("resumes")
             .select("*")

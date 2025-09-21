@@ -14,6 +14,13 @@ export interface Resume {
   suggestions: string[];
 }
 
+export interface ResumeAnalysis {
+  id: string;
+  created_at: string;
+  job_title: string;
+  overall_score: number;
+}
+
 /**
  * Defines the structure for a completed mock interview session.
  * This version includes detailed metrics for a comprehensive review.

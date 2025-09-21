@@ -169,9 +169,6 @@ class SaveInterviewRequest(BaseModel):
     job_role: str
     difficulty: str
     overall_score: int
-    total_questions: int
-    correct_answers: int
-    answered_questions: int
     duration_minutes: int
     questions: List[Dict[str, Any]]
     answers: List[Dict[str, Any]]
@@ -518,14 +515,18 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
 async def save_interview(request: Request, data: SaveInterviewRequest, user_id: str = Depends(get_current_user_id)):
     """Saves the mock test/interview result to the Supabase 'interviews' table."""
     try:
+        # Construct the 'settings' JSONB object
+        settings_data = {
+            "num_questions": len(data.questions),
+            "difficulty": data.difficulty
+        }
+
         insert_data = {
             "user_id": user_id,
             "job_role": data.job_role,
-            "difficulty": data.difficulty,
+            "interview_type": "mixed", # Defaulting to 'mixed' as per schema
+            "settings": json.dumps(settings_data),
             "overall_score": data.overall_score,
-            "total_questions": data.total_questions,
-            "correct_answers": data.correct_answers,
-            "answered_questions": data.answered_questions,
             "duration_minutes": data.duration_minutes,
             "questions": json.dumps(data.questions),
             "answers": json.dumps(data.answers),

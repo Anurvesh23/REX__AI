@@ -91,15 +91,15 @@ export default function MockTestPage() {
         questions,
         answers: answersWithFeedback,
         overall_score: overallScore,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswersCount,
-        answered_questions: answeredQuestionsCount,
         category_scores: analysis.category_scores,
         feedback: analysis.overall_feedback,
         suggestions: analysis.suggestions,
         duration_minutes: Math.round(answers.reduce((acc, a) => acc + a.time_taken, 0) / 60),
         job_role: settings.job_role,
         difficulty: settings.difficulty,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswersCount,
+        answered_questions: answeredQuestionsCount,
       }
 
       setInterviewResults(results);
@@ -107,7 +107,17 @@ export default function MockTestPage() {
       // --- Database Storage Enabled ---
       if (user) {
         try {
-          await interviewAPI.saveInterview({ ...results, user_id: user.id });
+          await interviewAPI.saveInterview({ 
+            job_role: results.job_role,
+            difficulty: results.difficulty,
+            overall_score: results.overall_score,
+            duration_minutes: results.duration_minutes,
+            questions: results.questions,
+            answers: results.answers,
+            feedback: results.feedback,
+            suggestions: results.suggestions,
+            category_scores: results.category_scores,
+          });
           toast({
             title: "Success!",
             description: "Your interview results have been saved to your profile.",
