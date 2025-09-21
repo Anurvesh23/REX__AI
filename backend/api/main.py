@@ -175,6 +175,17 @@ class SaveInterviewRequest(BaseModel):
     feedback: Optional[str] = None
     suggestions: Optional[List[str]] = None
     category_scores: Optional[Dict[str, int]] = None
+
+class SaveTestRequest(BaseModel):
+    job_role: str
+    difficulty: str
+    overall_score: int
+    duration_minutes: int
+    questions: List[Dict[str, Any]]
+    answers: List[Dict[str, Any]]
+    feedback: Optional[str] = None
+    suggestions: Optional[List[str]] = None
+    category_scores: Optional[Dict[str, int]] = None
 class SaveJobRequest(BaseModel):
     job_title: str
     company_name: str
@@ -510,15 +521,46 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
         print(f"Error saving analysis for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
+@app.post("/save-test/")
+@limiter.limit("10 per minute")
+async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depends(get_current_user_id)):
+    """Saves the mock test result to the Supabase 'mock_tests' table."""
+    try:
+        insert_data = {
+            "user_id": user_id,
+            "job_role": data.job_role,
+            "difficulty": data.difficulty,
+            "overall_score": data.overall_score,
+            "duration_minutes": data.duration_minutes,
+            "questions": json.dumps(data.questions),
+            "answers": json.dumps(data.answers),
+            "feedback": data.feedback,
+            "suggestions": data.suggestions,
+            "category_scores": json.dumps(data.category_scores) if data.category_scores else None,
+            "status": "completed"
+        }
+        
+        response = supabase.table('mock_tests').insert(insert_data).execute()
+
+        if hasattr(response, 'error') and response.error:
+            raise Exception(response.error.message)
+
+        return {"message": f"Test results for user {user_id} saved successfully!"}
+    except Exception as e:
+        print(f"Error saving test for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/save-interview/")
 @limiter.limit("10 per minute")
 async def save_interview(request: Request, data: SaveInterviewRequest, user_id: str = Depends(get_current_user_id)):
-    """Saves the mock test/interview result to the Supabase 'interviews' table."""
+    """Saves the mock interview result to the Supabase 'mock_interviews' table."""
     try:
         # Construct the 'settings' JSONB object
         settings_data = {
             "num_questions": len(data.questions),
-            "difficulty": data.difficulty
+            "difficulty": data.difficulty,
+            "focus_areas": ["general", "technical"] # Example focus areas
         }
 
         insert_data = {
@@ -536,15 +578,16 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
             "status": "completed"
         }
         
-        response = supabase.table('interviews').insert(insert_data).execute()
+        response = supabase.table('mock_interviews').insert(insert_data).execute()
 
-        if not response.data:
-            raise Exception("Failed to insert interview data into database.")
+        if hasattr(response, 'error') and response.error:
+            raise Exception(response.error.message)
 
         return {"message": f"Interview results for user {user_id} saved successfully!"}
     except Exception as e:
         print(f"Error saving interview for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/save-job/")
 @limiter.limit("10 per minute")

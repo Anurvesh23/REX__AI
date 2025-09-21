@@ -12,7 +12,7 @@ import GeneratingQuestions from "./generating-questions"
 import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
-import { interviewAPI } from "@/lib/api"
+import { mockAPI } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -51,7 +51,7 @@ export default function MockTestPage() {
     setCurrentStep("generating");
 
     try {
-      const data = await interviewAPI.generateQuestions(newSettings.job_role, newSettings.difficulty, { num_questions: newSettings.num_questions });
+      const data = await mockAPI.generateQuestions(newSettings.job_role, newSettings.difficulty, { num_questions: newSettings.num_questions });
       if (data && data.length > 0) {
         setQuestions(data);
         setCurrentStep("guidelines");
@@ -76,7 +76,7 @@ export default function MockTestPage() {
   const handleInterviewComplete = async (answers: any[]) => {
     setCurrentStep("evaluating");
     try {
-      const analysis = await interviewAPI.evaluateTest(questions, answers);
+      const analysis = await mockAPI.evaluateTest(questions, answers);
       const correctAnswersCount = answers.filter(a => a.is_correct).length;
       const answeredQuestionsCount = answers.filter(a => a.selected_answer !== null).length;
       const totalQuestions = questions.length;
@@ -107,7 +107,7 @@ export default function MockTestPage() {
       // --- Database Storage Enabled ---
       if (user) {
         try {
-          await interviewAPI.saveInterview({ 
+          await mockAPI.saveTest({ 
             job_role: results.job_role,
             difficulty: results.difficulty,
             overall_score: results.overall_score,
@@ -120,10 +120,10 @@ export default function MockTestPage() {
           });
           toast({
             title: "Success!",
-            description: "Your interview results have been saved to your profile.",
+            description: "Your test results have been saved to your profile.",
           });
         } catch (saveError) {
-          console.error("Failed to save interview results:", saveError);
+          console.error("Failed to save test results:", saveError);
           toast({
             variant: "destructive",
             title: "Save Error",
