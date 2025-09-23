@@ -211,6 +211,10 @@ class ResumeData(BaseModel):
     education: list
     skills: list
 
+class RewriteRequest(BaseModel):
+    title: str
+    description: str
+
 
 # --- PDF Generation Helpers ---
 def create_analysis_pdf(data: dict):
@@ -684,6 +688,28 @@ async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depend
         print(f"Error saving job for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/resume-builder/rewrite-description/")
+@limiter.limit("10 per minute")
+async def rewrite_description(request: Request, data: RewriteRequest, user_id: str = Depends(get_current_user_id)):
+    """Rewrites a job description using Gemini AI for more impact."""
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"""
+        As an expert resume writer, rewrite the following job description for a '{data.title}' position to be more impactful and action-oriented. 
+        Focus on achievements and quantifiable results. Use strong action verbs and concise language.
+        Return only the rewritten description as a plain text response, with each point on a new line.
+
+        Original Description:
+        {data.description}
+
+        Rewritten Description:
+        """
+        response = model.generate_content(prompt)
+        return {"rewritten_description": response.text}
+    except Exception as e:
+        print(f"Error during description rewrite for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to rewrite description: {str(e)}")
 
 @app.post("/resume-builder/save")
 async def save_resume_data(data: ResumeData, user_id: str = Depends(get_current_user_id)):

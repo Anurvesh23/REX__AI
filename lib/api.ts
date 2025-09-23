@@ -190,6 +190,29 @@ export const resumeAPI = {
   },
 };
 
+export const resumeBuilderAPI = {
+  /**
+   * Sends an experience description to the backend for an AI rewrite. (Secured)
+   */
+  async rewriteDescription(
+    title: string,
+    description: string
+  ): Promise<{ rewritten_description: string }> {
+    const payload = { title, description };
+    const config = await createAuthenticatedRequest("POST", payload);
+    const response = await fetch(
+      `${API_BASE_URL}/resume-builder/rewrite-description/`,
+      config
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to rewrite description: ${errorText}`);
+    }
+    return response.json();
+  },
+};
+
 // --- Mock Interview & Mock Test API ---
 
 export const mockAPI = {
