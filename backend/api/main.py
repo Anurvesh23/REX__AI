@@ -205,6 +205,12 @@ class AnalysisReport(BaseModel):
     feedback: str
     suggestions: List[str]
 
+class ResumeData(BaseModel):
+    personalInfo: dict
+    experience: list
+    education: list
+    skills: list
+
 
 # --- PDF Generation Helpers ---
 def create_analysis_pdf(data: dict):
@@ -677,3 +683,22 @@ async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depend
     except Exception as e:
         print(f"Error saving job for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/resume-builder/save")
+async def save_resume_data(data: ResumeData, user_id: str = Depends(get_current_user_id)):
+    # In a real app, you would save this to the 'resumes' table
+    print(f"Saving resume for user {user_id}:", data.dict())
+    return {"message": "Resume saved successfully"}
+
+@app.get("/resume-builder/load")
+async def load_resume_data(user_id: str = Depends(get_current_user_id)):
+    # In a real app, you would load this from the 'resumes' table
+    # Returning mock data for now
+    mock_data = {
+        "personalInfo": {"name": "John Doe", "email": "john.doe@example.com"},
+        "experience": [],
+        "education": [],
+        "skills": []
+    }
+    return mock_data
