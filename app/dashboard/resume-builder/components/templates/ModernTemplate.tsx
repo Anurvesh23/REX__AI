@@ -4,7 +4,7 @@ import { Mail, Phone, Globe, Linkedin, Github } from 'lucide-react';
 
 export const ModernTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="p-8 font-sans text-sm bg-white text-gray-800 flex">
@@ -33,8 +33,15 @@ export const ModernTemplate = () => {
 
             {/* Right Column (Main Content) */}
             <div className="w-2/3 pl-8">
+                {summary && (
+                    <div className="mb-6">
+                        <h3 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Summary</h3>
+                        <p className="text-sm text-gray-700">{summary}</p>
+                    </div>
+                )}
+
                 {experience.length > 0 && (
-                    <div>
+                    <div className="mb-6">
                         <h3 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Experience</h3>
                         {experience.map(exp => (
                             <div key={exp.id} className="mb-4">
@@ -51,8 +58,22 @@ export const ModernTemplate = () => {
                     </div>
                 )}
 
+                {projects.length > 0 && (
+                    <div className="mb-6">
+                        <h3 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Projects</h3>
+                        {projects.map(proj => (
+                            <div key={proj.id} className="mb-4">
+                                <h4 className="font-bold text-base">{proj.name}</h4>
+                                <ul className="list-disc list-inside mt-2 text-sm text-gray-700">
+                                    {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {education.length > 0 && (
-                    <div className="mt-6">
+                    <div className="mb-6">
                         <h3 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Education</h3>
                         {education.map(edu => (
                             <div key={edu.id} className="mb-2">
@@ -61,6 +82,18 @@ export const ModernTemplate = () => {
                                     <p className="text-xs text-gray-600">{edu.graduationDate}</p>
                                 </div>
                                 <p className="italic text-sm">{edu.degree}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {certifications.length > 0 && (
+                    <div>
+                        <h3 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Certifications</h3>
+                        {certifications.map(cert => (
+                            <div key={cert.id} className="mb-2">
+                                <h4 className="font-bold text-base">{cert.name}</h4>
+                                <p className="italic text-sm">{cert.issuer}, {cert.date}</p>
                             </div>
                         ))}
                     </div>

@@ -4,7 +4,7 @@ import { Mail, Phone, Globe, Linkedin, Github } from 'lucide-react';
 
 export const CreativeTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="font-sans text-sm flex min-h-[1123px]">
@@ -33,8 +33,15 @@ export const CreativeTemplate = () => {
 
             {/* Main Content */}
             <div className="w-2/3 p-8 bg-white">
+                 {summary && (
+                    <div className="mb-8">
+                        <h3 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-1 mb-4">Summary</h3>
+                        <p className="text-sm text-gray-700">{summary}</p>
+                    </div>
+                 )}
+
                  {experience.length > 0 && (
-                    <div>
+                    <div className="mb-8">
                         <h3 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-1 mb-4">Experience</h3>
                         {experience.map(exp => (
                             <div key={exp.id} className="mb-5">
@@ -50,9 +57,23 @@ export const CreativeTemplate = () => {
                         ))}
                     </div>
                 )}
+                
+                {projects.length > 0 && (
+                    <div className="mb-8">
+                        <h3 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-1 mb-4">Projects</h3>
+                        {projects.map(proj => (
+                            <div key={proj.id} className="mb-5">
+                                <h4 className="font-bold text-base">{proj.name}</h4>
+                                <ul className="list-disc list-inside mt-2 text-sm text-gray-700 space-y-1">
+                                    {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {education.length > 0 && (
-                    <div className="mt-8">
+                    <div className="mb-8">
                         <h3 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-1 mb-4">Education</h3>
                         {education.map(edu => (
                             <div key={edu.id} className="mb-3">
@@ -61,6 +82,18 @@ export const CreativeTemplate = () => {
                                     <p className="text-xs text-gray-600">{edu.graduationDate}</p>
                                 </div>
                                 <p className="italic text-sm text-gray-600">{edu.degree}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                 {certifications.length > 0 && (
+                    <div>
+                        <h3 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-1 mb-4">Certifications</h3>
+                        {certifications.map(cert => (
+                            <div key={cert.id} className="mb-3">
+                                <h4 className="font-bold text-base">{cert.name}</h4>
+                                <p className="italic text-sm text-gray-600">{cert.issuer}, {cert.date}</p>
                             </div>
                         ))}
                     </div>

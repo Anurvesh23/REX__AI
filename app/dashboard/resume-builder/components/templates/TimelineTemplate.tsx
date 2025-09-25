@@ -1,10 +1,10 @@
 // app/dashboard/resume-builder/components/templates/TimelineTemplate.tsx
 import { useResume } from '../ResumeProvider';
-import { Mail, Phone, MapPin, CalendarDays } from 'lucide-react';
+import { Mail, Phone, MapPin, CalendarDays, Link, Award } from 'lucide-react';
 
 export const TimelineTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="bg-white p-8 font-sans text-sm text-gray-800">
@@ -16,6 +16,13 @@ export const TimelineTemplate = () => {
                     {personalInfo.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{personalInfo.location}</span>}
                 </div>
             </header>
+
+            {summary && (
+                <section className="mb-8">
+                    <h2 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Summary</h2>
+                    <p className="text-gray-700 leading-relaxed">{summary}</p>
+                </section>
+            )}
 
             {experience.length > 0 && (
                 <section className="mb-8">
@@ -29,6 +36,24 @@ export const TimelineTemplate = () => {
                                 <p className="text-xs text-gray-600 flex items-center gap-1"><CalendarDays className="h-3 w-3" />{exp.startDate} - {exp.endDate}</p>
                                 <ul className="list-disc list-inside mt-2 text-gray-700 leading-relaxed pl-4">
                                     {exp.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {projects.length > 0 && (
+                 <section className="mb-8">
+                    <h2 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Projects</h2>
+                     <div className="relative pl-4 border-l-2 border-gray-200">
+                        {projects.map(proj => (
+                            <div key={proj.id} className="mb-6 relative">
+                                <span className="absolute -left-2 top-0 h-4 w-4 bg-blue-700 rounded-full"></span>
+                                <h3 className="font-bold text-base">{proj.name}</h3>
+                                {proj.url && <a href={proj.url} className="text-xs text-blue-600 flex items-center gap-1"><Link className="h-3 w-3" />{proj.url}</a>}
+                                <ul className="list-disc list-inside mt-2 text-gray-700 leading-relaxed pl-4">
+                                    {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
                                 </ul>
                             </div>
                         ))}
@@ -53,11 +78,27 @@ export const TimelineTemplate = () => {
             )}
 
             {skills.length > 0 && (
-                <section>
+                <section className="mb-8">
                     <h2 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Skills</h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-gray-700">
                         {skills.map(skill => (
                             <span key={skill.id} className="inline-block py-1 px-3 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">{skill.name}</span>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {certifications.length > 0 && (
+                <section>
+                    <h2 className="text-xl font-bold text-blue-700 border-b-2 border-blue-200 pb-1 mb-4">Certifications</h2>
+                     <div className="relative pl-4 border-l-2 border-gray-200">
+                        {certifications.map(cert => (
+                            <div key={cert.id} className="mb-6 relative">
+                                 <span className="absolute -left-2 top-0 h-4 w-4 bg-blue-700 rounded-full"></span>
+                                 <h3 className="font-bold text-base">{cert.name}</h3>
+                                 <p className="italic text-gray-700">{cert.issuer}</p>
+                                 <p className="text-xs text-gray-600 flex items-center gap-1"><Award className="h-3 w-3" />{cert.date}</p>
+                            </div>
                         ))}
                     </div>
                 </section>

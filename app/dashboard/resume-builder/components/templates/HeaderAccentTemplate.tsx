@@ -1,11 +1,10 @@
-
 // app/dashboard/resume-builder/components/templates/HeaderAccentTemplate.tsx
 import { useResume } from '../ResumeProvider';
 import { Mail, Phone, MapPin } from 'lucide-react';
 
 export const HeaderAccentTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="bg-white text-gray-800 font-sans">
@@ -21,7 +20,7 @@ export const HeaderAccentTemplate = () => {
             <main className="p-8">
                 <section className="mb-6">
                     <h2 className="text-lg font-bold text-blue-800 border-b-2 border-blue-200 pb-1 mb-3">Summary</h2>
-                    <p className="text-sm">Highly motivated Software Engineer with experience in building and maintaining web applications. Seeking to leverage my skills in a challenging role to contribute to a dynamic team.</p>
+                    <p className="text-sm">{summary}</p>
                 </section>
                 
                 <section className="mb-6">
@@ -47,7 +46,19 @@ export const HeaderAccentTemplate = () => {
                     ))}
                 </section>
                 
-                <section>
+                <section className="mb-6">
+                    <h2 className="text-lg font-bold text-blue-800 border-b-2 border-blue-200 pb-1 mb-3">Projects</h2>
+                    {projects.map(proj => (
+                        <div key={proj.id} className="mb-4">
+                            <h3 className="font-bold">{proj.name}</h3>
+                            <ul className="list-disc list-inside mt-1 text-sm text-gray-700">
+                                {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                            </ul>
+                        </div>
+                    ))}
+                </section>
+
+                <section className="mb-6">
                     <h2 className="text-lg font-bold text-blue-800 border-b-2 border-blue-200 pb-1 mb-3">Education</h2>
                      {education.map(edu => (
                          <div key={edu.id} className="mb-2">
@@ -59,6 +70,18 @@ export const HeaderAccentTemplate = () => {
                         </div>
                     ))}
                 </section>
+
+                {certifications.length > 0 && (
+                    <section>
+                        <h2 className="text-lg font-bold text-blue-800 border-b-2 border-blue-200 pb-1 mb-3">Certifications</h2>
+                        {certifications.map(cert => (
+                            <div key={cert.id} className="mb-2">
+                                <h3 className="font-bold">{cert.name}</h3>
+                                <p className="italic text-sm">{cert.issuer}, {cert.date}</p>
+                            </div>
+                        ))}
+                    </section>
+                )}
             </main>
         </div>
     );

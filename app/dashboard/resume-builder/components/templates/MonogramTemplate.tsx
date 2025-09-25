@@ -3,7 +3,7 @@ import { useResume } from '../ResumeProvider';
 
 export const MonogramTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     const getInitials = (name: string) => {
         if (!name) return '';
@@ -24,6 +24,13 @@ export const MonogramTemplate = () => {
 
             <div className="grid grid-cols-3 gap-8">
                 <div className="col-span-2">
+                    {summary && (
+                        <section className="mb-6">
+                            <h2 className="text-lg font-bold border-b-2 border-gray-300 pb-1 mb-3">Summary</h2>
+                            <p className="text-sm text-gray-700">{summary}</p>
+                        </section>
+                    )}
+
                     {experience.length > 0 && (
                         <section className="mb-6">
                             <h2 className="text-lg font-bold border-b-2 border-gray-300 pb-1 mb-3">Experience</h2>
@@ -35,6 +42,20 @@ export const MonogramTemplate = () => {
                                     </div>
                                     <ul className="list-disc list-inside mt-1 text-sm text-gray-700">
                                         {exp.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                                    </ul>
+                                </div>
+                            ))}
+                        </section>
+                    )}
+
+                    {projects.length > 0 && (
+                        <section>
+                            <h2 className="text-lg font-bold border-b-2 border-gray-300 pb-1 mb-3">Projects</h2>
+                            {projects.map(proj => (
+                                <div key={proj.id} className="mb-4">
+                                    <h3 className="font-bold">{proj.name}</h3>
+                                    <ul className="list-disc list-inside mt-1 text-sm text-gray-700">
+                                        {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
                                     </ul>
                                 </div>
                             ))}
@@ -54,14 +75,27 @@ export const MonogramTemplate = () => {
                             ))}
                         </section>
                     )}
+
                     {skills.length > 0 && (
-                         <section>
+                         <section className="mb-6">
                             <h2 className="text-lg font-bold border-b-2 border-gray-300 pb-1 mb-3">Skills</h2>
                             <div className="flex flex-wrap gap-2">
                                 {skills.map(skill => (
                                     <span key={skill.id} className="bg-gray-200 text-xs px-2 py-1 rounded">{skill.name}</span>
                                 ))}
                             </div>
+                        </section>
+                    )}
+
+                    {certifications.length > 0 && (
+                        <section>
+                            <h2 className="text-lg font-bold border-b-2 border-gray-300 pb-1 mb-3">Certifications</h2>
+                            {certifications.map(cert => (
+                                <div key={cert.id} className="mb-2">
+                                    <h3 className="font-bold text-sm">{cert.name}</h3>
+                                    <p className="text-xs">{cert.issuer}, {cert.date}</p>
+                                </div>
+                            ))}
                         </section>
                     )}
                 </div>

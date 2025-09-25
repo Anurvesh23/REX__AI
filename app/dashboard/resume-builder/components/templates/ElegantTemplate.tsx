@@ -1,10 +1,10 @@
 // app/dashboard/resume-builder/components/templates/ElegantTemplate.tsx
 import { useResume } from '../ResumeProvider';
-import { Mail, Phone, MapPin, Globe, Linkedin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
 
 export const ElegantTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="bg-white p-10 font-serif text-gray-800 text-sm">
@@ -17,9 +17,15 @@ export const ElegantTemplate = () => {
                     {personalInfo.phone && <div className="flex items-center justify-end gap-1"><Phone className="h-3 w-3 text-gray-500" />{personalInfo.phone}</div>}
                     {personalInfo.email && <a href={`mailto:${personalInfo.email}`} className="flex items-center justify-end gap-1"><Mail className="h-3 w-3 text-gray-500" />{personalInfo.email}</a>}
                     {personalInfo.location && <div className="flex items-center justify-end gap-1"><MapPin className="h-3 w-3 text-gray-500" />{personalInfo.location}</div>}
-                    {personalInfo.linkedin && <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-end gap-1"><Linkedin className="h-3 w-3 text-gray-500" />LinkedIn</a>}
                 </div>
             </header>
+
+            {summary && (
+                <section className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-400 pb-1 mb-4">Summary</h2>
+                    <p className="text-gray-700 leading-relaxed">{summary}</p>
+                </section>
+            )}
 
             {experience.length > 0 && (
                 <section className="mb-6">
@@ -33,6 +39,20 @@ export const ElegantTemplate = () => {
                             <p className="italic text-gray-700">{exp.company}, {exp.location}</p>
                             <ul className="list-disc list-inside mt-2 text-gray-700 leading-relaxed">
                                 {exp.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                            </ul>
+                        </div>
+                    ))}
+                </section>
+            )}
+
+            {projects.length > 0 && (
+                <section className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-400 pb-1 mb-4">Projects</h2>
+                    {projects.map(proj => (
+                        <div key={proj.id} className="mb-4">
+                            <h3 className="font-bold text-base">{proj.name}</h3>
+                            <ul className="list-disc list-inside mt-2 text-gray-700 leading-relaxed">
+                                {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
                             </ul>
                         </div>
                     ))}
@@ -55,7 +75,7 @@ export const ElegantTemplate = () => {
             )}
 
             {skills.length > 0 && (
-                <section>
+                <section className="mb-6">
                     <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-400 pb-1 mb-4">Skills</h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-gray-700">
                         {skills.map(skill => (
@@ -64,6 +84,18 @@ export const ElegantTemplate = () => {
                     </div>
                 </section>
             )}
+
+            {certifications.length > 0 && (
+                 <section>
+                    <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-400 pb-1 mb-4">Certifications</h2>
+                    {certifications.map(cert => (
+                        <div key={cert.id} className="mb-2">
+                            <h3 className="font-bold">{cert.name}</h3>
+                            <p className="italic text-sm text-gray-600">{cert.issuer}, {cert.date}</p>
+                        </div>
+                    ))}
+                </section>
+            )}
         </div>
     );
-};  
+};

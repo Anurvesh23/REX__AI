@@ -4,7 +4,7 @@ import { Mail, Phone, MapPin } from 'lucide-react';
 
 export const CompactTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="bg-white p-6 font-sans text-xs text-gray-800">
@@ -21,6 +21,13 @@ export const CompactTemplate = () => {
             <div className="grid grid-cols-4 gap-x-6">
                 {/* Main Content Area */}
                 <div className="col-span-3">
+                    {summary && (
+                        <section className="mb-5">
+                            <h2 className="text-md font-bold text-blue-700 border-b border-gray-300 pb-1 mb-3">Summary</h2>
+                            <p className="text-gray-700 leading-tight">{summary}</p>
+                        </section>
+                    )}
+
                     {experience.length > 0 && (
                         <section className="mb-5">
                             <h2 className="text-md font-bold text-blue-700 border-b border-gray-300 pb-1 mb-3">Experience</h2>
@@ -36,6 +43,20 @@ export const CompactTemplate = () => {
                                     </ul>
                                 </div>
                             ))}
+                        </section>
+                    )}
+
+                    {projects.length > 0 && (
+                        <section>
+                             <h2 className="text-md font-bold text-blue-700 border-b border-gray-300 pb-1 mb-3">Projects</h2>
+                             {projects.map(proj => (
+                                <div key={proj.id} className="mb-3">
+                                    <h3 className="font-semibold">{proj.name}</h3>
+                                     <ul className="list-disc list-inside ml-4 mt-1 text-gray-700 leading-tight">
+                                        {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                                    </ul>
+                                </div>
+                             ))}
                         </section>
                     )}
                 </div>
@@ -56,11 +77,23 @@ export const CompactTemplate = () => {
                     )}
 
                     {skills.length > 0 && (
-                        <section>
+                        <section className="mb-5">
                             <h2 className="text-md font-bold text-blue-700 border-b border-gray-300 pb-1 mb-3">Skills</h2>
                             <ul className="list-none space-y-1">
                                 {skills.map(skill => <li key={skill.id} className="text-gray-700">{skill.name}</li>)}
                             </ul>
+                        </section>
+                    )}
+
+                    {certifications.length > 0 && (
+                        <section>
+                             <h2 className="text-md font-bold text-blue-700 border-b border-gray-300 pb-1 mb-3">Certifications</h2>
+                            {certifications.map(cert => (
+                                <div key={cert.id} className="mb-2">
+                                    <h3 className="font-semibold">{cert.name}</h3>
+                                    <p className="text-gray-600">{cert.issuer}</p>
+                                </div>
+                            ))}
                         </section>
                     )}
                 </div>
