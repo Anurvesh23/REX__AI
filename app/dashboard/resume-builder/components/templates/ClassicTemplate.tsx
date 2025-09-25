@@ -1,26 +1,75 @@
 // app/dashboard/resume-builder/components/templates/ClassicTemplate.tsx
 import { useResume } from '../ResumeProvider';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Phone, Globe } from 'lucide-react';
+import { Mail, Phone, Globe, Linkedin, Github } from 'lucide-react';
 
 export const ClassicTemplate = () => {
     const { resumeData } = useResume();
     const { personalInfo, experience, education, skills } = resumeData;
 
     return (
-        <div className="p-8 font-serif text-sm">
+        <div className="p-8 font-serif text-sm bg-white text-gray-800">
             <div className="text-center mb-6">
-                {personalInfo.name && <h1 className="text-4xl font-bold tracking-wider">{personalInfo.name}</h1>}
-                <div className="flex justify-center items-center gap-4 text-xs text-muted-foreground mt-2">
+                {personalInfo.name && <h1 className="text-4xl font-bold tracking-wider mb-2">{personalInfo.name}</h1>}
+                <div className="flex justify-center items-center flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
                     {personalInfo.location && <span>{personalInfo.location}</span>}
-                    {personalInfo.phone && <a href={`tel:${personalInfo.phone}`} className="flex items-center gap-1"><Phone className="h-3 w-3" />{personalInfo.phone}</a>}
-                    {personalInfo.email && <a href={`mailto:${personalInfo.email}`} className="flex items-center gap-1"><Mail className="h-3 w-3" />{personalInfo.email}</a>}
-                    {personalInfo.website && <a href={personalInfo.website} target="_blank" className="flex items-center gap-1"><Globe className="h-3 w-3" />{personalInfo.website}</a>}
+                    {personalInfo.phone && <a href={`tel:${personalInfo.phone}`} className="flex items-center gap-1.5"><Phone className="h-3 w-3" />{personalInfo.phone}</a>}
+                    {personalInfo.email && <a href={`mailto:${personalInfo.email}`} className="flex items-center gap-1.5"><Mail className="h-3 w-3" />{personalInfo.email}</a>}
+                    {personalInfo.website && <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5"><Globe className="h-3 w-3" />{personalInfo.website}</a>}
+                    {personalInfo.linkedin && <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5"><Linkedin className="h-3 w-3" />{personalInfo.linkedin}</a>}
+                    {personalInfo.github && <a href={personalInfo.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5"><Github className="h-3 w-3" />{personalInfo.github}</a>}
                 </div>
             </div>
-            <Separator className="my-6" />
-            
-            {/* Other sections would be mapped here in a similar fashion... */}
+
+            {/* Experience */}
+            {experience.length > 0 && (
+                <div>
+                    <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Experience</h2>
+                    {experience.map(exp => (
+                        <div key={exp.id} className="mb-4">
+                            <div className="flex justify-between items-baseline">
+                                <h3 className="font-bold">{exp.title}</h3>
+                                <div className="text-xs text-gray-600">{exp.startDate} - {exp.endDate}</div>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                                <p className="italic">{exp.company}</p>
+                                <p className="text-xs text-gray-600">{exp.location}</p>
+                            </div>
+                            <ul className="list-disc list-inside mt-2 text-sm text-gray-700">
+                                {exp.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Education */}
+            {education.length > 0 && (
+                <div className="mt-6">
+                    <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Education</h2>
+                    {education.map(edu => (
+                        <div key={edu.id} className="mb-3">
+                            <div className="flex justify-between items-baseline">
+                                <h3 className="font-bold">{edu.school}</h3>
+                                <p className="text-xs text-gray-600">{edu.graduationDate}</p>
+                            </div>
+                             <p className="italic">{edu.degree}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Skills */}
+            {skills.length > 0 && (
+                <div className="mt-6">
+                    <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Skills</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {skills.map(skill => (
+                            <span key={skill.id} className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">{skill.name}</span>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
