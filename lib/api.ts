@@ -172,7 +172,7 @@ export const resumeAPI = {
    */
   async getUserResumes(userId: string): Promise<ResumeAnalysis[]> {
     const { data, error } = await supabase
-      .from("resumes")
+      .from("rex_ai")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
@@ -185,7 +185,7 @@ export const resumeAPI = {
    * Deletes a specific resume analysis directly from Supabase.
    */
   async deleteResume(resumeId: string) {
-    const { error } = await supabase.from("resumes").delete().eq("id", resumeId);
+    const { error } = await supabase.from("rex_ai").delete().eq("id", resumeId);
     if (error) throw error;
   },
 };

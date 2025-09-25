@@ -14,8 +14,8 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Resumes table
-CREATE TABLE resumes (
+-- rex_ai table (formerly resumes)
+CREATE TABLE rex_ai (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     original_resume_text TEXT NOT NULL,
@@ -132,8 +132,8 @@ CREATE TABLE user_settings (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_resumes_user_id ON resumes(user_id);
-CREATE INDEX idx_resumes_created_at ON resumes(created_at DESC);
+CREATE INDEX idx_rex_ai_user_id ON rex_ai(user_id);
+CREATE INDEX idx_rex_ai_created_at ON rex_ai(created_at DESC);
 CREATE INDEX idx_mock_interviews_user_id ON mock_interviews(user_id);
 CREATE INDEX idx_mock_interviews_created_at ON mock_interviews(created_at DESC);
 CREATE INDEX idx_mock_tests_user_id ON mock_tests(user_id);
@@ -143,7 +143,7 @@ CREATE INDEX idx_saved_jobs_status ON saved_jobs(application_status);
 
 -- Row Level Security (RLS) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE resumes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rex_ai ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mock_interviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mock_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_searches ENABLE ROW LEVEL SECURITY;
@@ -154,10 +154,10 @@ ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Users can view own resumes" ON resumes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own resumes" ON resumes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own resumes" ON resumes FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own resumes" ON resumes FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own rex_ai data" ON rex_ai FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own rex_ai data" ON rex_ai FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own rex_ai data" ON rex_ai FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own rex_ai data" ON rex_ai FOR DELETE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view own mock interviews" ON mock_interviews FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own mock interviews" ON mock_interviews FOR INSERT WITH CHECK (auth.uid() = user_id);

@@ -596,7 +596,7 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
             "keywords_missing": data.keywords_missing,
         }
 
-        response = supabase.table("resumes").insert(record_to_save).execute()
+        response = supabase.table("rex_ai").insert(record_to_save).execute()
         
         if response.data:
             return {"message": f"Analysis for user {user_id} saved successfully!"}
