@@ -19,3 +19,4 @@ pip-audit
 # Secure JWT library replacing python-jose
 pyjwt[cryptography]
 supabase
+weasyprint

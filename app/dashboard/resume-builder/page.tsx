@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Wand2, Download, Loader2 } from "lucide-react";
@@ -9,7 +9,12 @@ import { ResumePreview } from "./components/ResumePreview";
 import { ResumeProvider, useResume } from "./components/ResumeProvider";
 import { TemplateSelection } from "./components/TemplateSelection";
 import { DownloadDialog } from './components/DownloadDialog';
-import { useToast } from '@/components/ui/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ResumeBuilderContent = () => {
     const { selectedTemplate } = useResume();
@@ -24,28 +29,70 @@ const ResumeBuilderContent = () => {
 
 // Component for header buttons to access context
 const HeaderActions = () => {
-    const { download, isDownloadReady, improveResume, isImproving } = useResume();
+    const { resumeData, download, isDownloadReady, improveResume, isImproving } = useResume();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    // NEW: Validation logic
+    const isFormComplete = useMemo(() => {
+        const { summary, experience, education, skills, projects, certifications } = resumeData;
+        return summary.trim() !== '' &&
+               experience.length > 0 &&
+               education.length > 0 &&
+               skills.length > 0 &&
+               projects.length > 0 &&
+               certifications.length > 0;
+    }, [resumeData]);
 
     const handleImproveAndDownload = async () => {
         await improveResume();
         setIsDialogOpen(false);
-        // Automatically trigger download after improving
         if (download) {
            download();
         }
     }
 
+    const renderButtons = () => {
+        if (!isFormComplete) {
+            return (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center space-x-2">
+                                <Button disabled>
+                                    <Wand2 className="h-4 w-4 mr-2" />
+                                    AI Assistant
+                                </Button>
+                                <Button variant="outline" disabled>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download as PDF
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Please fill out all resume sections to enable.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            );
+        }
+
+        return (
+            <>
+                <Button onClick={improveResume} disabled={isImproving}>
+                    {isImproving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                    AI Assistant
+                </Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(true)} disabled={!isDownloadReady}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download as PDF
+                </Button>
+            </>
+        );
+    };
+
     return (
         <>
-            <Button onClick={improveResume} disabled={isImproving}>
-                {isImproving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                AI Assistant
-            </Button>
-            <Button variant="outline" onClick={() => setIsDialogOpen(true)} disabled={!isDownloadReady}>
-                <Download className="h-4 w-4 mr-2" />
-                Download as PDF
-            </Button>
+            {renderButtons()}
             <DownloadDialog
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
