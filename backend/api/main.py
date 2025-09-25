@@ -6,7 +6,7 @@ import sys
 import os
 import json
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, AsyncGenerator
 
 # --- Environment and AI ---
 import google.generativeai as genai
@@ -17,7 +17,7 @@ from fastapi import (
     FastAPI, UploadFile, File, Form, Body, Depends, HTTPException, Header, status, Request
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security ---
@@ -430,16 +430,29 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
         print(f"Error during resume optimization for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate AI resume: {str(e)}")
 
+async def cover_letter_streamer(resume: str, job_description: str) -> AsyncGenerator[str, None]:
+    """Generator function to stream the cover letter from the AI."""
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{resume}\n\nJOB DESCRIPTION:\n{job_description}"
+        response_stream = model.generate_content(prompt, stream=True)
+        for chunk in response_stream:
+            yield chunk.text
+    except Exception as e:
+        print(f"Error during cover letter streaming: {e}")
+        yield f"Error: {e}"
+
 @app.post("/generate-cover-letter/")
 @limiter.limit("5 per minute")
 async def generate_cover_letter(request: Request, data: CoverLetterRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{data.resume}\n\nJOB DESCRIPTION:\n{data.job_description}"
-        response = model.generate_content(prompt)
-        return {"cover_letter": response.text}
+        return StreamingResponse(
+            cover_letter_streamer(data.resume, data.job_description),
+            media_type="text/event-stream"
+        )
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
+
 
 @app.post("/interview/start/")
 @limiter.limit("5 per minute")

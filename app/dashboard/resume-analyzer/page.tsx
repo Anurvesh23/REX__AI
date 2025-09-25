@@ -63,10 +63,16 @@ export default function ResumeAnalyzerPage() {
     const handleGenerateCoverLetter = async () => {
         if (!resumeData) return;
         toast({ title: "Generating Cover Letter...", description: "Please wait while our AI works its magic." });
+        setCoverLetterContent("");
+        setIsCoverLetterOpen(true);
         try {
-            const letter = await resumeAPI.generateCoverLetter(resumeData.resumeText, resumeData.jobDescription);
-            setCoverLetterContent(letter || "Could not generate cover letter.");
-            setIsCoverLetterOpen(true);
+            await resumeAPI.generateCoverLetter(
+                resumeData.resumeText,
+                resumeData.jobDescription,
+                (chunk) => {
+                    setCoverLetterContent((prev) => prev + chunk);
+                }
+            );
         } catch (err) {
             toast({
                 variant: "destructive",

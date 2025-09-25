@@ -81,7 +81,11 @@ export const resumeAPI = {
   /**
    * Generates a cover letter using the backend AI. (Secured)
    */
-  async generateCoverLetter(resumeText: string, jobDescription: string) {
+  async generateCoverLetter(
+    resumeText: string,
+    jobDescription: string,
+    onChunk: (chunk: string) => void
+  ) {
     const payload = { resume: resumeText, job_description: jobDescription };
     const config = await createAuthenticatedRequest("POST", payload);
     const response = await fetch(
@@ -93,8 +97,20 @@ export const resumeAPI = {
       const errorText = await response.text();
       throw new Error(`Failed to generate cover letter: ${errorText}`);
     }
-    const data = await response.json();
-    return data.cover_letter;
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("Failed to read response stream.");
+    }
+
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      onChunk(decoder.decode(value, { stream: true }));
+    }
   },
 
   /**
