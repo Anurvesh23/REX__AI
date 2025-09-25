@@ -6,7 +6,23 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Wand2 } from "lucide-react";
 import { ResumeForm } from "./components/ResumeForm";
 import { ResumePreview } from "./components/ResumePreview";
-import { ResumeProvider } from "./components/ResumeProvider";
+import { ResumeProvider, useResume } from "./components/ResumeProvider";
+import { TemplateSelection } from "./components/TemplateSelection";
+
+const ResumeBuilderContent = () => {
+    const { selectedTemplate } = useResume();
+
+    if (!selectedTemplate) {
+        return <TemplateSelection />;
+    }
+
+    return (
+        <main className="grid md:grid-cols-2 gap-8 p-8">
+            <ResumeForm />
+            <ResumePreview />
+        </main>
+    );
+};
 
 export default function ResumeBuilderPage() {
     return (
@@ -31,10 +47,7 @@ export default function ResumeBuilderPage() {
                         </div>
                     </div>
                 </div>
-                <main className="grid md:grid-cols-2 gap-8 p-8">
-                    <ResumeForm />
-                    <ResumePreview />
-                </main>
+                <ResumeBuilderContent />
             </div>
         </ResumeProvider>
     );

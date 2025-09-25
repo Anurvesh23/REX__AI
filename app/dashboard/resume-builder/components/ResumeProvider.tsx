@@ -1,9 +1,8 @@
-// app/dashboard/resume-builder/components/ResumeProvider.tsx
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-
+import { templates } from './templates';
 
 // --- Type Definitions ---
 export interface PersonalInfo {
@@ -47,12 +46,21 @@ export interface ResumeData {
     skills: Skill[];
 }
 
+export interface Template {
+    id: string;
+    name: string;
+    thumbnail: string;
+    component: React.FC;
+}
+
 export interface ResumeContextType {
     resumeData: ResumeData;
     updateField: (section: keyof ResumeData, index: number | null, field: string, value: string) => void;
     addListItem: (section: 'experience' | 'education' | 'skills') => void;
     removeListItem: (section: 'experience' | 'education' | 'skills', id: string) => void;
     updateListItem: (section: 'experience' | 'education' | 'skills', id: string, field: string, value: string) => void;
+    selectedTemplate: Template | null;
+    setTemplate: (template: Template) => void;
 }
 
 
@@ -86,6 +94,11 @@ export const useResume = () => {
 
 export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
+    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+
+    const setTemplate = (template: Template) => {
+        setSelectedTemplate(template);
+    };
 
     const updateField = (section: keyof ResumeData, index: number | null, field: string, value: string) => {
         setResumeData(prev => {
@@ -127,7 +140,7 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
             [section]: [...prev[section], newItem] as any,
         }));
     };
-    
+
 
     const removeListItem = (section: 'experience' | 'education' | 'skills', id: string) => {
         setResumeData(prev => ({
@@ -141,7 +154,9 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         updateField,
         addListItem,
         removeListItem,
-        updateListItem
+        updateListItem,
+        selectedTemplate,
+        setTemplate,
     };
 
     return (
