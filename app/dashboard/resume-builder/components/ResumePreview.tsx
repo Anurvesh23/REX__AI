@@ -1,39 +1,28 @@
 "use client";
 
-import { useRef } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { useResume } from './ResumeProvider';
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { resumeAPI } from '@/lib/api';
 
 export const ResumePreview = () => {
-    const { selectedTemplate } = useResume();
+    const { selectedTemplate, registerDownload } = useResume();
     const { toast } = useToast();
     const resumePreviewRef = useRef<HTMLDivElement>(null);
 
-    const handleDownload = async () => {
+    // Using useCallback to ensure the function reference is stable
+    const handleDownload = useCallback(async () => {
         if (!resumePreviewRef.current) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not capture resume content for download.",
-            });
+            toast({ variant: "destructive", title: "Error", description: "Could not find resume content." });
             return;
         }
-
         toast({ title: "Generating PDF..." });
 
         try {
-            // Extract the inner HTML of the preview component
             const resumeHtmlContent = resumePreviewRef.current.innerHTML;
-            
-            // Backend expects a plain text string; for simplicity, we'll send the HTML
-            // A more advanced implementation would convert HTML to a text format or handle it on the backend.
             const blob = await resumeAPI.generateAiResumePdf(resumeHtmlContent);
 
-            // Create a download link and trigger the download
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -43,38 +32,30 @@ export const ResumePreview = () => {
             a.remove();
             window.URL.revokeObjectURL(url);
             
-             toast({
-                title: "Success!",
-                description: "Your resume has been downloaded.",
-            });
-
+            toast({ title: "Success!", description: "Your resume has been downloaded." });
         } catch (error) {
             console.error("Failed to download resume:", error);
-            toast({
-                variant: "destructive",
-                title: "Download Failed",
-                description: "Could not generate the PDF. Please try again.",
-            });
+            toast({ variant: "destructive", title: "Download Failed", description: "Could not generate the PDF." });
         }
-    };
+    }, [toast]); // Dependency array for useCallback
+
+    // Register the download function with the provider
+    useEffect(() => {
+        registerDownload(handleDownload);
+        // Cleanup on unmount
+        return () => registerDownload(null);
+    }, [registerDownload, handleDownload]);
 
     if (!selectedTemplate) return null;
 
     const TemplateComponent = selectedTemplate.component;
 
     return (
-        <div className="sticky top-24">
-            <Card className="h-[calc(100vh-10rem)] overflow-y-auto">
-                <CardContent className="p-0" ref={resumePreviewRef}>
-                    <TemplateComponent />
-                </CardContent>
-            </Card>
-            <div className="mt-4 text-center">
-                 <Button onClick={handleDownload}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download as PDF
-                </Button>
-            </div>
-        </div>
+        <Card className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto">
+            {/* The ref is attached here to capture the content */}
+            <CardContent className="p-0" ref={resumePreviewRef}>
+                <TemplateComponent />
+            </CardContent>
+        </Card>
     );
 };

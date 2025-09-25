@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- Type Definitions ---
@@ -38,7 +38,6 @@ export interface Skill {
     name: string;
 }
 
-// NEW: Project Interface
 export interface Project {
     id: string;
     name: string;
@@ -46,7 +45,6 @@ export interface Project {
     url: string;
 }
 
-// NEW: Certification Interface
 export interface Certification {
     id: string;
     name: string;
@@ -54,15 +52,14 @@ export interface Certification {
     date: string;
 }
 
-
 export interface ResumeData {
     personalInfo: PersonalInfo;
-    summary: string; // NEW
+    summary: string;
     experience: Experience[];
     education: Education[];
     skills: Skill[];
-    projects: Project[]; // NEW
-    certifications: Certification[]; // NEW
+    projects: Project[];
+    certifications: Certification[];
 }
 
 export interface Template {
@@ -72,7 +69,6 @@ export interface Template {
     component: React.FC;
 }
 
-// UPDATE: Add new sections to list item types
 type ListItemSection = 'experience' | 'education' | 'skills' | 'projects' | 'certifications';
 
 export interface ResumeContextType {
@@ -83,8 +79,10 @@ export interface ResumeContextType {
     updateListItem: (section: ListItemSection, id: string, field: string, value: string) => void;
     selectedTemplate: Template | null;
     setTemplate: (template: Template) => void;
+    registerDownload: (fn: (() => void) | null) => void;
+    download: () => void;
+    isDownloadReady: boolean;
 }
-
 
 // --- Initial State ---
 const initialResumeData: ResumeData = {
@@ -97,14 +95,13 @@ const initialResumeData: ResumeData = {
         linkedin: 'linkedin.com/in/anurvesh',
         github: 'github.com/anurvesh23'
     },
-    summary: 'A brief professional summary about your skills, experience, and goals. Tailor this to the job you are applying for.', // NEW
+    summary: 'A brief professional summary about your skills, experience, and goals. Tailor this to the job you are applying for.',
     experience: [],
     education: [],
     skills: [],
-    projects: [], // NEW
-    certifications: [], // NEW
+    projects: [],
+    certifications: [],
 };
-
 
 // --- Context and Provider ---
 const ResumeContext = createContext<ResumeContextType | null>(null);
@@ -120,6 +117,21 @@ export const useResume = () => {
 export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+    const downloadHandler = useRef<(() => void) | null>(null);
+    const [isDownloadReady, setIsDownloadReady] = useState(false);
+
+    const registerDownload = (fn: (() => void) | null) => {
+        downloadHandler.current = fn;
+        setIsDownloadReady(!!fn);
+    };
+
+    const download = () => {
+        if (downloadHandler.current) {
+            downloadHandler.current();
+        } else {
+            console.error("Download handler not registered.");
+        }
+    };
 
     const setTemplate = (template: Template) => {
         setSelectedTemplate(template);
@@ -128,13 +140,10 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const updateField = (section: keyof ResumeData, index: number | null, field: string, value: string) => {
         setResumeData(prev => {
             const newData = { ...prev };
-            if (index === null) {
-                // For non-array sections like personalInfo and summary
-                (newData[section] as any)[field] = value;
-            }
-             // For summary, which is a direct string property
             if (section === 'summary') {
-                (newData as any)[section] = value;
+                newData.summary = value;
+            } else if (index === null && section === 'personalInfo') {
+                (newData[section] as any)[field] = value;
             }
             return newData;
         });
@@ -161,7 +170,6 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
             case 'skills':
                 newItem = { id: uuidv4(), name: '' };
                 break;
-            // NEW: Add project and certification cases
             case 'projects':
                 newItem = { id: uuidv4(), name: '', description: '', url: '' };
                 break;
@@ -176,7 +184,6 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
             [section]: [...prev[section], newItem] as any,
         }));
     };
-
 
     const removeListItem = (section: ListItemSection, id: string) => {
         setResumeData(prev => ({
@@ -193,6 +200,9 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         updateListItem,
         selectedTemplate,
         setTemplate,
+        registerDownload,
+        download,
+        isDownloadReady,
     };
 
     return (
