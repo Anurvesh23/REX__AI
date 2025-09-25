@@ -5,10 +5,9 @@ import { CreativeTemplate } from "./templates/CreativeTemplate";
 import { ProfessionalTemplate } from "./templates/ProfessionalTemplate";
 import { MonogramTemplate } from "./templates/MonogramTemplate";
 import { HeaderAccentTemplate } from "./templates/HeaderAccentTemplate";
-import { ElegantTemplate } from "./templates/ElegantTemplate";     // NEW
-import { CompactTemplate } from "./templates/CompactTemplate";     // NEW
-import { TimelineTemplate } from "./templates/TimelineTemplate";   // NEW
-
+import { ElegantTemplate } from "./templates/ElegantTemplate";     
+import { CompactTemplate } from "./templates/CompactTemplate";    
+import { TimelineTemplate } from "./templates/TimelineTemplate";  
 export const templates = [
     {
         id: "classic",
