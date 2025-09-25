@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { templates } from './templates';
 
 // --- Type Definitions ---
 export interface PersonalInfo {
@@ -39,11 +38,31 @@ export interface Skill {
     name: string;
 }
 
+// NEW: Project Interface
+export interface Project {
+    id: string;
+    name: string;
+    description: string;
+    url: string;
+}
+
+// NEW: Certification Interface
+export interface Certification {
+    id: string;
+    name: string;
+    issuer: string;
+    date: string;
+}
+
+
 export interface ResumeData {
     personalInfo: PersonalInfo;
+    summary: string; // NEW
     experience: Experience[];
     education: Education[];
     skills: Skill[];
+    projects: Project[]; // NEW
+    certifications: Certification[]; // NEW
 }
 
 export interface Template {
@@ -53,12 +72,15 @@ export interface Template {
     component: React.FC;
 }
 
+// UPDATE: Add new sections to list item types
+type ListItemSection = 'experience' | 'education' | 'skills' | 'projects' | 'certifications';
+
 export interface ResumeContextType {
     resumeData: ResumeData;
     updateField: (section: keyof ResumeData, index: number | null, field: string, value: string) => void;
-    addListItem: (section: 'experience' | 'education' | 'skills') => void;
-    removeListItem: (section: 'experience' | 'education' | 'skills', id: string) => void;
-    updateListItem: (section: 'experience' | 'education' | 'skills', id: string, field: string, value: string) => void;
+    addListItem: (section: ListItemSection) => void;
+    removeListItem: (section: ListItemSection, id: string) => void;
+    updateListItem: (section: ListItemSection, id: string, field: string, value: string) => void;
     selectedTemplate: Template | null;
     setTemplate: (template: Template) => void;
 }
@@ -75,9 +97,12 @@ const initialResumeData: ResumeData = {
         linkedin: 'linkedin.com/in/anurvesh',
         github: 'github.com/anurvesh23'
     },
+    summary: 'A brief professional summary about your skills, experience, and goals. Tailor this to the job you are applying for.', // NEW
     experience: [],
     education: [],
     skills: [],
+    projects: [], // NEW
+    certifications: [], // NEW
 };
 
 
@@ -104,23 +129,27 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         setResumeData(prev => {
             const newData = { ...prev };
             if (index === null) {
-                // For non-array sections like personalInfo
+                // For non-array sections like personalInfo and summary
                 (newData[section] as any)[field] = value;
+            }
+             // For summary, which is a direct string property
+            if (section === 'summary') {
+                (newData as any)[section] = value;
             }
             return newData;
         });
     };
 
-    const updateListItem = (section: 'experience' | 'education' | 'skills', id: string, field: string, value: any) => {
+    const updateListItem = (section: ListItemSection, id: string, field: string, value: any) => {
         setResumeData(prev => ({
             ...prev,
-            [section]: prev[section].map(item =>
+            [section]: (prev[section] as any[]).map(item =>
                 item.id === id ? { ...item, [field]: value } : item
             ),
         }));
     };
 
-    const addListItem = (section: 'experience' | 'education' | 'skills') => {
+    const addListItem = (section: ListItemSection) => {
         let newItem;
         switch (section) {
             case 'experience':
@@ -132,6 +161,13 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
             case 'skills':
                 newItem = { id: uuidv4(), name: '' };
                 break;
+            // NEW: Add project and certification cases
+            case 'projects':
+                newItem = { id: uuidv4(), name: '', description: '', url: '' };
+                break;
+            case 'certifications':
+                newItem = { id: uuidv4(), name: '', issuer: '', date: '' };
+                break;
             default:
                 return;
         }
@@ -142,10 +178,10 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     };
 
 
-    const removeListItem = (section: 'experience' | 'education' | 'skills', id: string) => {
+    const removeListItem = (section: ListItemSection, id: string) => {
         setResumeData(prev => ({
             ...prev,
-            [section]: prev[section].filter(item => item.id !== id),
+            [section]: (prev[section] as any[]).filter(item => item.id !== id),
         }));
     };
 

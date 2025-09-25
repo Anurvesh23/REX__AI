@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Trash2, PlusCircle, Wand2, Loader2 } from "lucide-react";
-import type { Experience, Education, Skill } from './ResumeProvider';
+import type { Experience, Education, Skill, Project, Certification } from './ResumeProvider';
 import { resumeBuilderAPI } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -76,7 +76,8 @@ export const ResumeForm = () => {
                 <CardTitle>Resume Details</CardTitle>
             </CardHeader>
             <CardContent>
-                <Accordion type="multiple" defaultValue={['personal', 'experience', 'education', 'skills']} className="w-full">
+                {/* UPDATE: Added new sections to default accordion view */}
+                <Accordion type="multiple" defaultValue={['personal', 'summary', 'experience', 'education', 'skills', 'projects', 'certifications']} className="w-full">
                     {/* Personal Information */}
                     <AccordionItem value="personal">
                         <AccordionTrigger>Personal Information</AccordionTrigger>
@@ -108,11 +109,24 @@ export const ResumeForm = () => {
                         </AccordionContent>
                     </AccordionItem>
                     
+                    {/* NEW: Summary */}
+                    <AccordionItem value="summary">
+                        <AccordionTrigger>Professional Summary</AccordionTrigger>
+                        <AccordionContent>
+                            <Textarea 
+                                placeholder="Write a brief summary about your professional background..." 
+                                value={resumeData.summary} 
+                                onChange={(e) => updateField('summary', null, '', e.target.value)}
+                                className="min-h-[100px]"
+                            />
+                        </AccordionContent>
+                    </AccordionItem>
+                    
                     {/* Professional Experience */}
                     <AccordionItem value="experience">
                         <AccordionTrigger>Professional Experience</AccordionTrigger>
                         <AccordionContent className="space-y-4">
-                            {resumeData.experience.map((exp, index) => (
+                            {resumeData.experience.map((exp) => (
                                 <div key={exp.id} className="p-4 border rounded-lg space-y-3 relative">
                                     <Button variant="outline" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeListItem('experience', exp.id)}>
                                         <Trash2 className="h-4 w-4" />
@@ -194,6 +208,67 @@ export const ResumeForm = () => {
                             </Button>
                         </AccordionContent>
                     </AccordionItem>
+
+                     {/* NEW: Academic Projects */}
+                     <AccordionItem value="projects">
+                        <AccordionTrigger>Academic Projects</AccordionTrigger>
+                        <AccordionContent className="space-y-4">
+                            {resumeData.projects.map(proj => (
+                                <div key={proj.id} className="p-4 border rounded-lg space-y-3 relative">
+                                    <Button variant="outline" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeListItem('projects', proj.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <div className="space-y-2">
+                                        <Label>Project Name</Label>
+                                        <Input value={proj.name} onChange={(e) => updateListItem('projects', proj.id, 'name', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Project URL (Optional)</Label>
+                                        <Input value={proj.url} onChange={(e) => updateListItem('projects', proj.id, 'url', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Description</Label>
+                                        <Textarea placeholder="Describe your project..." value={proj.description} onChange={(e) => updateListItem('projects', proj.id, 'description', e.target.value)} />
+                                    </div>
+                                </div>
+                            ))}
+                            <Button variant="outline" onClick={() => addListItem('projects')} className="w-full gap-2">
+                                <PlusCircle className="h-4 w-4" /> Add Project
+                            </Button>
+                        </AccordionContent>
+                    </AccordionItem>
+
+                     {/* NEW: Certifications */}
+                     <AccordionItem value="certifications">
+                        <AccordionTrigger>Certifications</AccordionTrigger>
+                        <AccordionContent className="space-y-4">
+                            {resumeData.certifications.map(cert => (
+                                <div key={cert.id} className="p-4 border rounded-lg space-y-3 relative">
+                                    <Button variant="outline" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeListItem('certifications', cert.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Certification Name</Label>
+                                            <Input value={cert.name} onChange={(e) => updateListItem('certifications', cert.id, 'name', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Issuing Organization</Label>
+                                            <Input value={cert.issuer} onChange={(e) => updateListItem('certifications', cert.id, 'issuer', e.target.value)} />
+                                        </div>
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label>Date Issued</Label>
+                                        <Input value={cert.date} onChange={(e) => updateListItem('certifications', cert.id, 'date', e.target.value)} />
+                                    </div>
+                                </div>
+                            ))}
+                            <Button variant="outline" onClick={() => addListItem('certifications')} className="w-full gap-2">
+                                <PlusCircle className="h-4 w-4" /> Add Certification
+                            </Button>
+                        </AccordionContent>
+                    </AccordionItem>
+
 
                      {/* Skills */}
                      <AccordionItem value="skills">
