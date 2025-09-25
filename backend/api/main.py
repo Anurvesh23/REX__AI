@@ -604,22 +604,22 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
             "ai_score": data.overall_score,
             "keyword_match_score": data.job_match,
             "ats_score": data.ats_score,
-            "suggestions": json.dumps(combined_suggestions).replace('\\u0000', ''),
+            "suggestions": combined_suggestions,
             "keywords_matched": data.keywords_matched,
             "keywords_missing": data.keywords_missing,
         }
 
         response = supabase.table("rex_ai").insert(record_to_save).execute()
         
-        if response.data:
-            return {"message": f"Analysis for user {user_id} saved successfully!"}
-        else:
-            error_message = response.error.message if response.error else "Unknown Supabase error"
-            raise HTTPException(status_code=500, detail=error_message)
+        if response.error:
+            error_message = response.error.message
+            raise HTTPException(status_code=500, detail=f"Failed to save analysis to Supabase: {error_message}")
+
+        return {"message": f"Analysis for user {user_id} saved successfully!"}
 
     except Exception as e:
         print(f"Error saving analysis for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/save-test/")
 @limiter.limit("10 per minute")
@@ -631,18 +631,18 @@ async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depe
             "difficulty": data.difficulty,
             "overall_score": data.overall_score,
             "duration_minutes": data.duration_minutes,
-            "questions": json.dumps(data.questions),
-            "answers": json.dumps(data.answers),
+            "questions": data.questions,
+            "answers": data.answers,
             "feedback": data.feedback,
             "suggestions": data.suggestions,
-            "category_scores": json.dumps(data.category_scores) if data.category_scores else None,
+            "category_scores": data.category_scores,
             "status": "completed"
         }
         
         response = supabase.table('mock_tests').insert(insert_data).execute()
 
-        if hasattr(response, 'error') and response.error:
-             raise Exception(response.error.message)
+        if response.error:
+            raise Exception(response.error.message)
 
         return {"message": f"Test results for user {user_id} saved successfully!"}
     except Exception as e:
@@ -663,21 +663,21 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
             "user_id": user_id,
             "job_role": data.job_role,
             "interview_type": "mixed",
-            "settings": json.dumps(settings_data),
+            "settings": settings_data,
             "overall_score": data.overall_score,
             "duration_minutes": data.duration_minutes,
-            "questions": json.dumps(data.questions),
-            "answers": json.dumps(data.answers),
+            "questions": data.questions,
+            "answers": data.answers,
             "feedback": data.feedback,
             "suggestions": data.suggestions,
-            "category_scores": json.dumps(data.category_scores) if data.category_scores else None,
+            "category_scores": data.category_scores,
             "status": "completed"
         }
         
         response = supabase.table('mock_interviews').insert(insert_data).execute()
 
-        if hasattr(response, 'error') and response.error:
-             raise Exception(response.error.message)
+        if response.error:
+            raise Exception(response.error.message)
 
         return {"message": f"Interview results for user {user_id} saved successfully!"}
     except Exception as e:
@@ -789,3 +789,4 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
     except Exception as e:
         print(f"Error during AI resume improvement for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
+
