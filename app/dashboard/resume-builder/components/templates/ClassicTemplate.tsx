@@ -1,11 +1,10 @@
 // app/dashboard/resume-builder/components/templates/ClassicTemplate.tsx
 import { useResume } from '../ResumeProvider';
-import { Separator } from '@/components/ui/separator';
 import { Mail, Phone, Globe, Linkedin, Github } from 'lucide-react';
 
 export const ClassicTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="p-8 font-serif text-sm bg-white text-gray-800">
@@ -21,9 +20,17 @@ export const ClassicTemplate = () => {
                 </div>
             </div>
 
+            {/* Summary */}
+            {summary && (
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-2">Summary</h2>
+                    <p>{summary}</p>
+                </div>
+            )}
+
             {/* Experience */}
             {experience.length > 0 && (
-                <div>
+                <div className="mb-6">
                     <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Experience</h2>
                     {experience.map(exp => (
                         <div key={exp.id} className="mb-4">
@@ -42,10 +49,26 @@ export const ClassicTemplate = () => {
                     ))}
                 </div>
             )}
+            
+            {/* Projects */}
+            {projects.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Projects</h2>
+                    {projects.map(proj => (
+                        <div key={proj.id} className="mb-4">
+                            <h3 className="font-bold">{proj.name}</h3>
+                             {proj.url && <a href={proj.url} className="text-xs text-blue-600" target="_blank" rel="noopener noreferrer">{proj.url}</a>}
+                            <ul className="list-disc list-inside mt-1 text-sm text-gray-700">
+                                {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Education */}
             {education.length > 0 && (
-                <div className="mt-6">
+                <div className="mb-6">
                     <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Education</h2>
                     {education.map(edu => (
                         <div key={edu.id} className="mb-3">
@@ -61,13 +84,26 @@ export const ClassicTemplate = () => {
 
             {/* Skills */}
             {skills.length > 0 && (
-                <div className="mt-6">
+                <div className="mb-6">
                     <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Skills</h2>
                     <div className="flex flex-wrap gap-2">
                         {skills.map(skill => (
                             <span key={skill.id} className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">{skill.name}</span>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Certifications */}
+            {certifications.length > 0 && (
+                <div>
+                    <h2 className="text-xl font-bold border-b-2 border-gray-300 pb-1 mb-4">Certifications</h2>
+                    {certifications.map(cert => (
+                        <div key={cert.id} className="mb-2">
+                            <h3 className="font-bold">{cert.name} - <span className="italic font-normal">{cert.issuer}</span></h3>
+                            <p className="text-xs text-gray-600">{cert.date}</p>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

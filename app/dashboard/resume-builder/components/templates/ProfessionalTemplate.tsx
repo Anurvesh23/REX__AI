@@ -4,7 +4,7 @@ import { Mail, Phone, Globe, Linkedin, Github } from 'lucide-react';
 
 export const ProfessionalTemplate = () => {
     const { resumeData } = useResume();
-    const { personalInfo, experience, education, skills } = resumeData;
+    const { personalInfo, summary, experience, education, skills, projects, certifications } = resumeData;
 
     return (
         <div className="bg-white text-gray-800 font-sans p-8 flex text-xs">
@@ -36,9 +36,7 @@ export const ProfessionalTemplate = () => {
             <div className="w-2/3 pl-8">
                 <div className="mb-6">
                     <h2 className="text-sm font-bold border-b-2 border-gray-300 pb-1 mb-2">Summary</h2>
-                    <p>
-                        Dynamic and results-oriented Software Engineer with a proven track record of designing, developing, and deploying high-quality software solutions. Adept at collaborating with cross-functional teams to deliver innovative products.
-                    </p>
+                    <p>{summary}</p>
                 </div>
 
                 {experience.length > 0 && (
@@ -59,8 +57,22 @@ export const ProfessionalTemplate = () => {
                     </div>
                 )}
 
+                {projects.length > 0 && (
+                    <div className="mb-6">
+                        <h2 className="text-sm font-bold border-b-2 border-gray-300 pb-1 mb-2">Projects</h2>
+                        {projects.map(proj => (
+                            <div key={proj.id} className="mb-3">
+                                <h3 className="font-bold text-sm">{proj.name}</h3>
+                                <ul className="list-disc list-inside mt-1 text-gray-600">
+                                    {proj.description.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {education.length > 0 && (
-                    <div>
+                    <div className="mb-6">
                         <h2 className="text-sm font-bold border-b-2 border-gray-300 pb-1 mb-2">Education</h2>
                         {education.map(edu => (
                              <div key={edu.id} className="mb-2">
@@ -69,6 +81,18 @@ export const ProfessionalTemplate = () => {
                                     <p className="text-gray-600">{edu.graduationDate}</p>
                                 </div>
                                 <p className="italic text-gray-700">{edu.degree}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                 {certifications.length > 0 && (
+                    <div>
+                        <h2 className="text-sm font-bold border-b-2 border-gray-300 pb-1 mb-2">Certifications</h2>
+                        {certifications.map(cert => (
+                             <div key={cert.id} className="mb-2">
+                                <h3 className="font-bold text-sm">{cert.name}</h3>
+                                <p className="italic text-gray-700">{cert.issuer} - {cert.date}</p>
                             </div>
                         ))}
                     </div>
