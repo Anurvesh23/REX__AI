@@ -211,6 +211,23 @@ export const resumeBuilderAPI = {
     }
     return response.json();
   },
+
+  /**
+   * Sends the entire resume data object for AI improvement. (Secured)
+   */
+  async improveResume(resumeData: any): Promise<any> {
+    const config = await createAuthenticatedRequest("POST", resumeData);
+    const response = await fetch(
+      `${API_BASE_URL}/resume-builder/improve-resume/`,
+      config
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AI improvement failed: ${errorText}`);
+    }
+    return response.json();
+  }
 };
 
 // --- Mock Interview & Mock Test API ---

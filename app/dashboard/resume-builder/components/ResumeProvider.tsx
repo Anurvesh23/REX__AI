@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, ReactNode, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useToast } from '@/components/ui/use-toast';
+import { resumeBuilderAPI } from '@/lib/api';
 
 // --- Type Definitions ---
 export interface PersonalInfo {
@@ -82,6 +84,8 @@ export interface ResumeContextType {
     registerDownload: (fn: (() => void) | null) => void;
     download: () => void;
     isDownloadReady: boolean;
+    isImproving: boolean;
+    improveResume: () => Promise<void>;
 }
 
 // --- Initial State ---
@@ -119,6 +123,23 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const downloadHandler = useRef<(() => void) | null>(null);
     const [isDownloadReady, setIsDownloadReady] = useState(false);
+    const [isImproving, setIsImproving] = useState(false);
+    const { toast } = useToast();
+
+    const improveResume = async () => {
+        setIsImproving(true);
+        toast({ title: "AI Assistant is rewriting your resume...", description: "This may take a moment." });
+        try {
+            const improvedData = await resumeBuilderAPI.improveResume(resumeData);
+            setResumeData(improvedData);
+            toast({ title: "Success!", description: "Your resume has been improved by AI." });
+        } catch (error) {
+            console.error("Failed to improve resume", error);
+            toast({ variant: "destructive", title: "AI Improvement Failed", description: "Please try again." });
+        } finally {
+            setIsImproving(false);
+        }
+    };
 
     const registerDownload = (fn: (() => void) | null) => {
         downloadHandler.current = fn;
@@ -139,13 +160,19 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
 
     const updateField = (section: keyof ResumeData, index: number | null, field: string, value: string) => {
         setResumeData(prev => {
-            const newData = { ...prev };
             if (section === 'summary') {
-                newData.summary = value;
-            } else if (index === null && section === 'personalInfo') {
-                (newData[section] as any)[field] = value;
+                return { ...prev, summary: value };
             }
-            return newData;
+            if (section === 'personalInfo' && field) {
+                return {
+                    ...prev,
+                    personalInfo: {
+                        ...prev.personalInfo,
+                        [field]: value
+                    }
+                };
+            }
+            return prev;
         });
     };
 
@@ -161,36 +188,20 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const addListItem = (section: ListItemSection) => {
         let newItem;
         switch (section) {
-            case 'experience':
-                newItem = { id: uuidv4(), title: '', company: '', location: '', startDate: '', endDate: '', description: '' };
-                break;
-            case 'education':
-                newItem = { id: uuidv4(), school: '', location: '', degree: '', field: '', graduationDate: '' };
-                break;
-            case 'skills':
-                newItem = { id: uuidv4(), name: '' };
-                break;
-            case 'projects':
-                newItem = { id: uuidv4(), name: '', description: '', url: '' };
-                break;
-            case 'certifications':
-                newItem = { id: uuidv4(), name: '', issuer: '', date: '' };
-                break;
-            default:
-                return;
+            case 'experience': newItem = { id: uuidv4(), title: '', company: '', location: '', startDate: '', endDate: '', description: '' }; break;
+            case 'education': newItem = { id: uuidv4(), school: '', location: '', degree: '', field: '', graduationDate: '' }; break;
+            case 'skills': newItem = { id: uuidv4(), name: '' }; break;
+            case 'projects': newItem = { id: uuidv4(), name: '', description: '', url: '' }; break;
+            case 'certifications': newItem = { id: uuidv4(), name: '', issuer: '', date: '' }; break;
+            default: return;
         }
-        setResumeData(prev => ({
-            ...prev,
-            [section]: [...prev[section], newItem] as any,
-        }));
+        setResumeData(prev => ({ ...prev, [section]: [...prev[section], newItem] as any, }));
     };
 
     const removeListItem = (section: ListItemSection, id: string) => {
-        setResumeData(prev => ({
-            ...prev,
-            [section]: (prev[section] as any[]).filter(item => item.id !== id),
-        }));
+        setResumeData(prev => ({ ...prev, [section]: (prev[section] as any[]).filter(item => item.id !== id), }));
     };
+
 
     const value = {
         resumeData,
@@ -203,6 +214,8 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         registerDownload,
         download,
         isDownloadReady,
+        isImproving,
+        improveResume,
     };
 
     return (

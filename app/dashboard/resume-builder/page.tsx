@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from 'react';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Wand2, Download } from "lucide-react"; // Import Download icon
+import { ArrowLeft, Wand2, Download, Loader2 } from "lucide-react";
 import { ResumeForm } from "./components/ResumeForm";
 import { ResumePreview } from "./components/ResumePreview";
 import { ResumeProvider, useResume } from "./components/ResumeProvider";
 import { TemplateSelection } from "./components/TemplateSelection";
+import { DownloadDialog } from './components/DownloadDialog';
+import { useToast } from '@/components/ui/use-toast';
 
 const ResumeBuilderContent = () => {
     const { selectedTemplate } = useResume();
@@ -19,14 +22,41 @@ const ResumeBuilderContent = () => {
     );
 };
 
-// NEW: Header component to access the context for download
+// Component for header buttons to access context
 const HeaderActions = () => {
-    const { download, isDownloadReady } = useResume();
+    const { download, isDownloadReady, improveResume, isImproving } = useResume();
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const handleImproveAndDownload = async () => {
+        await improveResume();
+        setIsDialogOpen(false);
+        // Automatically trigger download after improving
+        if (download) {
+           download();
+        }
+    }
+
     return (
-        <Button variant="outline" onClick={download} disabled={!isDownloadReady}>
-            <Download className="h-4 w-4 mr-2" />
-            Download as PDF
-        </Button>
+        <>
+            <Button onClick={improveResume} disabled={isImproving}>
+                {isImproving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                AI Assistant
+            </Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(true)} disabled={!isDownloadReady}>
+                <Download className="h-4 w-4 mr-2" />
+                Download as PDF
+            </Button>
+            <DownloadDialog
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                onDownload={() => {
+                    if (download) download();
+                    setIsDialogOpen(false);
+                }}
+                onImprove={handleImproveAndDownload}
+                isImproving={isImproving}
+            />
+        </>
     );
 }
 
@@ -47,11 +77,6 @@ export default function ResumeBuilderPage() {
                                 <span className="text-xl font-bold text-slate-900 dark:text-white">AI Resume Builder</span>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <Button>
-                                    <Wand2 className="h-4 w-4 mr-2" />
-                                    AI Assistant
-                                </Button>
-                                {/* UPDATED: Use the new HeaderActions component */}
                                 <HeaderActions />
                             </div>
                         </div>

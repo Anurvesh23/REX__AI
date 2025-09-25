@@ -205,15 +205,36 @@ class AnalysisReport(BaseModel):
     feedback: str
     suggestions: List[str]
 
-class ResumeData(BaseModel):
-    personalInfo: dict
-    experience: list
-    education: list
-    skills: list
-
 class RewriteRequest(BaseModel):
     title: str
     description: str
+
+class PersonalInfoModel(BaseModel):
+    name: str; email: str; phone: str; location: str; website: str; linkedin: str; github: str
+
+class ExperienceModel(BaseModel):
+    id: str; title: str; company: str; location: str; startDate: str; endDate: str; description: str
+
+class EducationModel(BaseModel):
+    id: str; school: str; location: str; degree: str; field: str; graduationDate: str
+
+class SkillModel(BaseModel):
+    id: str; name: str
+
+class ProjectModel(BaseModel):
+    id: str; name: str; description: str; url: str
+
+class CertificationModel(BaseModel):
+    id: str; name: str; issuer: str; date: str
+
+class ResumeDataModel(BaseModel):
+    personalInfo: PersonalInfoModel
+    summary: str
+    experience: List[ExperienceModel]
+    education: List[EducationModel]
+    skills: List[SkillModel]
+    projects: List[ProjectModel]
+    certifications: List[CertificationModel]
 
 
 # --- PDF Generation Helpers ---
@@ -504,9 +525,6 @@ async def evaluate_answers(
             suggestions=suggestions,
         )
 
-        # Save the report to the database
-        # (You would typically save this to the mock_interviews table)
-
         return report
     except Exception as e:
         print(f"Error during answer evaluation for user {user_id}: {e}")
@@ -557,11 +575,9 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
 @limiter.limit("10 per minute")
 async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        # Sanitize text inputs to remove null characters
         sanitized_job_description = data.job_description.replace('\u0000', '')
         sanitized_resume_text = data.original_resume_text.replace('\u0000', '')
         
-        # Combine strengths and weaknesses into the suggestions list
         combined_suggestions = data.suggestions
         for strength in data.strengths:
             combined_suggestions.append({"type": "success", "title": "Strength", "description": strength, "impact": "Positive", "category": "General"})
@@ -595,7 +611,6 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
 @app.post("/save-test/")
 @limiter.limit("10 per minute")
 async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depends(get_current_user_id)):
-    """Saves the mock test result to the Supabase 'mock_tests' table."""
     try:
         insert_data = {
             "user_id": user_id,
@@ -621,23 +636,20 @@ async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depe
         print(f"Error saving test for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/save-interview/")
 @limiter.limit("10 per minute")
 async def save_interview(request: Request, data: SaveInterviewRequest, user_id: str = Depends(get_current_user_id)):
-    """Saves the mock interview result to the Supabase 'mock_interviews' table."""
     try:
-        # Construct the 'settings' JSONB object
         settings_data = {
             "num_questions": len(data.questions),
             "difficulty": data.difficulty,
-            "focus_areas": ["general", "technical"] # Example focus areas
+            "focus_areas": ["general", "technical"] 
         }
 
         insert_data = {
             "user_id": user_id,
             "job_role": data.job_role,
-            "interview_type": "mixed", # Defaulting to 'mixed' as per schema
+            "interview_type": "mixed",
             "settings": json.dumps(settings_data),
             "overall_score": data.overall_score,
             "duration_minutes": data.duration_minutes,
@@ -659,11 +671,9 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
         print(f"Error saving interview for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/save-job/")
 @limiter.limit("10 per minute")
 async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depends(get_current_user_id)):
-    """Saves a job to the Supabase 'saved_jobs' table."""
     try:
         existing_job_response = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company", data.company_name).execute()
         if len(existing_job_response.data) > 0:
@@ -688,11 +698,9 @@ async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depend
         print(f"Error saving job for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/resume-builder/rewrite-description/")
 @limiter.limit("10 per minute")
 async def rewrite_description(request: Request, data: RewriteRequest, user_id: str = Depends(get_current_user_id)):
-    """Rewrites a job description using Gemini AI for more impact."""
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
@@ -711,16 +719,20 @@ async def rewrite_description(request: Request, data: RewriteRequest, user_id: s
         print(f"Error during description rewrite for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to rewrite description: {str(e)}")
 
+# This endpoint is a placeholder and not fully implemented
+class ResumeSaveData(BaseModel):
+    personalInfo: dict
+    experience: list
+    education: list
+    skills: list
+
 @app.post("/resume-builder/save")
-async def save_resume_data(data: ResumeData, user_id: str = Depends(get_current_user_id)):
-    # In a real app, you would save this to the 'resumes' table
+async def save_resume_data(data: ResumeSaveData, user_id: str = Depends(get_current_user_id)):
     print(f"Saving resume for user {user_id}:", data.dict())
     return {"message": "Resume saved successfully"}
 
 @app.get("/resume-builder/load")
 async def load_resume_data(user_id: str = Depends(get_current_user_id)):
-    # In a real app, you would load this from the 'resumes' table
-    # Returning mock data for now
     mock_data = {
         "personalInfo": {"name": "John Doe", "email": "john.doe@example.com"},
         "experience": [],
@@ -728,3 +740,39 @@ async def load_resume_data(user_id: str = Depends(get_current_user_id)):
         "skills": []
     }
     return mock_data
+
+@app.post("/resume-builder/improve-resume/")
+@limiter.limit("5 per minute")
+async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_id: str = Depends(get_current_user_id)):
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        resume_json_str = data.json()
+
+        prompt = f"""
+        **Task:** You are an expert career coach and professional resume writer. Your task is to analyze the provided resume JSON data and improve its content for clarity, impact, and professionalism.
+
+        **Instructions:**
+        1.  **Rewrite for Impact:** For the `summary` and each `description` in the `experience` and `projects` sections, rewrite the text to be more action-oriented and results-driven. Use the STAR (Situation, Task, Action, Result) method where applicable. Incorporate quantifiable metrics if possible (you can infer reasonable metrics if none are provided, e.g., "improved performance by 15%").
+        2.  **Maintain Structure:** You MUST return the data in the exact same JSON format as the input. Do not add, remove, or rename any keys. The `id` for each item must remain unchanged.
+        3.  **No New Information:** Only enhance the existing text. Do not invent new jobs, skills, or projects.
+        4.  **Output:** Your entire response must be ONLY the modified JSON object, with no extra text, explanations, or markdown formatting like ```json.
+
+        ---
+        **ORIGINAL RESUME DATA (JSON):**
+        {resume_json_str}
+        ---
+
+        **IMPROVED RESUME DATA (JSON):**
+        """
+        
+        response = model.generate_content(prompt)
+        
+        json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
+        improved_data = json.loads(json_response_text)
+        
+        validated_data = ResumeDataModel(**improved_data)
+        
+        return validated_data
+    except Exception as e:
+        print(f"Error during AI resume improvement for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
