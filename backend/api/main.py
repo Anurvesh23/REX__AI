@@ -1,5 +1,3 @@
-# backend/api/main.py
-
 # --- Core Imports ---
 import tempfile
 import sys
@@ -72,7 +70,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Security: CORS Configuration
 origins = [
     os.getenv("FRONTEND_URL", "http://localhost:3000"),
-    # Add your production frontend URL here, e.g., "https://your-app.vercel.app"
+    # Add your production frontend URL here, e.g., "[https://your-app.vercel.app](https://your-app.vercel.app)"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -789,4 +787,3 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
     except Exception as e:
         print(f"Error during AI resume improvement for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
-
