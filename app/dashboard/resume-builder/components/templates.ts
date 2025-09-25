@@ -64,4 +64,5 @@ export const templates = [
     thumbnail: "/timeline-template.png", // UPDATED PATH
     component: TimelineTemplate,
   },
+  
 ];
