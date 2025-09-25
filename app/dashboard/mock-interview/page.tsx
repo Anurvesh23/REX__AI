@@ -1,16 +1,24 @@
 // app/dashboard/mock-interview/page.tsx
 "use client"
 
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, Search, SlidersHorizontal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InterviewCard from "./_components/interview-card";
+import dynamic from 'next/dynamic';
 
-const DeviceSetup = lazy(() => import("./_components/device-setup"));
-const VideoInterview = lazy(() => import("./_components/video-interview"));
+const DeviceSetup = dynamic(() => import("./_components/device-setup"), {
+    suspense: true,
+    loading: () => <LoadingSpinner />,
+});
+const VideoInterview = dynamic(() => import("./_components/video-interview"), {
+    suspense: true,
+    loading: () => <LoadingSpinner />,
+});
+
 
 const interviews = {
     technical: [
