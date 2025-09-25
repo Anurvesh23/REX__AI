@@ -1,3 +1,5 @@
+# backend/api/main.py
+
 # --- Core Imports ---
 import tempfile
 import sys
@@ -70,7 +72,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Security: CORS Configuration
 origins = [
     os.getenv("FRONTEND_URL", "http://localhost:3000"),
-    # Add your production frontend URL here, e.g., "[https://your-app.vercel.app](https://your-app.vercel.app)"
+    # Add your production frontend URL here, e.g., "https://your-app.vercel.app"
 ]
 app.add_middleware(
     CORSMiddleware,
