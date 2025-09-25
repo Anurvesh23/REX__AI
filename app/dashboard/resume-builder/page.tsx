@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Wand2 } from "lucide-react";
+import { ArrowLeft, Download, Wand2 } from "lucide-react";
 import { ResumeForm } from "./components/ResumeForm";
 import { ResumePreview } from "./components/ResumePreview";
 import { ResumeProvider, useResume } from "./components/ResumeProvider";
@@ -40,10 +40,16 @@ export default function ResumeBuilderPage() {
                                 </Link>
                                 <span className="text-xl font-bold text-slate-900 dark:text-white">AI Resume Builder</span>
                             </div>
-                            <Button>
-                                <Wand2 className="h-4 w-4 mr-2" />
-                                AI Assistant
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                                <Button>
+                                    <Wand2 className="h-4 w-4 mr-2" />
+                                    AI Assistant
+                                </Button>
+                                 <Button variant="outline">
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
