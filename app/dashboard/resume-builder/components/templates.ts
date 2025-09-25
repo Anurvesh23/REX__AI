@@ -2,46 +2,66 @@
 import { ClassicTemplate } from "./templates/ClassicTemplate";
 import { ModernTemplate } from "./templates/ModernTemplate";
 import { CreativeTemplate } from "./templates/CreativeTemplate";
-import { ProfessionalTemplate } from "./templates/ProfessionalTemplate"; // Added
-import { MonogramTemplate } from "./templates/MonogramTemplate";     // Added
-import { HeaderAccentTemplate } from "./templates/HeaderAccentTemplate"; // Added
+import { ProfessionalTemplate } from "./templates/ProfessionalTemplate";
+import { MonogramTemplate } from "./templates/MonogramTemplate";
+import { HeaderAccentTemplate } from "./templates/HeaderAccentTemplate";
+import { ElegantTemplate } from "./templates/ElegantTemplate";     // NEW
+import { CompactTemplate } from "./templates/CompactTemplate";     // NEW
+import { TimelineTemplate } from "./templates/TimelineTemplate";   // NEW
 
 export const templates = [
     {
         id: "classic",
         name: "Classic",
-        thumbnail: "/images/roles/content-writer.jpg", // Using placeholder thumbnail
+        thumbnail: "/images/templates/classic-template.png", // Ensure you have this image
         component: ClassicTemplate,
     },
     {
         id: "modern",
         name: "Modern",
-        thumbnail: "/images/roles/business-analyst.jpg", // Using placeholder thumbnail
+        thumbnail: "/images/templates/modern-template.png", // Ensure you have this image
         component: ModernTemplate,
     },
     {
         id: "creative",
         name: "Creative",
-        thumbnail: "/images/roles/graphic-designer.jpg", // Using placeholder thumbnail
+        thumbnail: "/images/templates/creative-template.png", // Ensure you have this image
         component: CreativeTemplate,
     },
-    // --- New Templates Added Below ---
     {
         id: "professional",
         name: "Professional",
-        thumbnail: "/images/roles/software-developer.png", // Using placeholder thumbnail
+        thumbnail: "/images/templates/professional-template.png", // Ensure you have this image
         component: ProfessionalTemplate,
     },
     {
         id: "monogram",
         name: "Monogram",
-        thumbnail: "/images/roles/product-manager.jpg", // Using placeholder thumbnail
+        thumbnail: "/images/templates/monogram-template.png", // Ensure you have this image
         component: MonogramTemplate,
     },
     {
         id: "header-accent",
         name: "Header Accent",
-        thumbnail: "/images/roles/hr-manager.jpg", // Using placeholder thumbnail
+        thumbnail: "/images/templates/header-accent-template.png", // Ensure you have this image
         component: HeaderAccentTemplate,
     },
-];
+    {
+        id: "elegant",
+        name: "Elegant",
+        thumbnail: "/images/templates/elegant-template.png", // NEW IMAGE
+        component: ElegantTemplate,
+    },
+    {
+        id: "compact",
+        name: "Compact",
+        thumbnail: "/images/templates/compact-template.png", // NEW IMAGE
+        component: CompactTemplate,
+    },
+    {
+        id: "timeline",
+        name: "Timeline",
+        thumbnail: "/images/templates/timeline-template.png", // NEW IMAGE
+        component: TimelineTemplate,
+    },
+]; 
