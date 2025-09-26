@@ -500,6 +500,7 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
         
+
 @app.post("/save-analysis/")
 @limiter.limit("10 per minute")
 async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
@@ -507,7 +508,8 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
         sanitized_job_description = data.job_description.replace('\u0000', '')
         sanitized_resume_text = data.original_resume_text.replace('\u0000', '')
         
-        combined_suggestions = data.suggestions
+        # FIX 1: Use list() to safely copy the array before modification
+        combined_suggestions = list(data.suggestions)
         for strength in data.strengths:
             combined_suggestions.append({"type": "success", "title": "Strength", "description": strength, "impact": "Positive", "category": "General"})
         for weakness in data.weaknesses:
@@ -515,6 +517,8 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
 
         record_to_save = {
             "user_id": user_id,
+            # FIX 2: Added missing job_title field
+            "job_title": data.job_title or "Resume Analysis", 
             "job_description": sanitized_job_description,
             "original_resume_text": sanitized_resume_text,
             "ai_score": data.overall_score,
@@ -545,12 +549,6 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
 @limiter.limit("10 per minute")
 async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        settings_data = {
-            "num_questions": len(data.questions),
-            "difficulty": data.difficulty,
-            "focus_areas": ["general", "technical"] 
-        }
-
         insert_data = {
             "user_id": user_id,
             "job_role": data.job_role,
@@ -565,13 +563,14 @@ async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depe
             "status": "completed"
         }
         
-        # FIX: Using returning='minimal' to avoid JSON parsing bug in older client
-        response = supabase.table('mock_tests').insert(insert_data, returning='minimal').execute()
+        # RECTIFICATION: Removed returning='minimal' to fix client-side JSON parsing issue.
+        # This forces the database to return the inserted record as valid JSON.
+        response = supabase.table('mock_tests').insert(insert_data).execute()
 
         if response.error:
             raise Exception(response.error.message)
 
-        return {"message": f"Test results for user {user_id} saved successfully!"}
+        return {"message": f"Test results for user {user_id} saved successfully!", "data": response.data}
     except Exception as e:
         print(f"Error saving test for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -601,13 +600,13 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
             "status": "completed"
         }
         
-        # FIX: Using returning='minimal' to avoid JSON parsing bug in older client
-        response = supabase.table('mock_interviews').insert(insert_data, returning='minimal').execute()
+        # RECTIFICATION: Removed returning='minimal' to fix client-side JSON parsing issue.
+        response = supabase.table('mock_interviews').insert(insert_data).execute()
 
         if response.error:
             raise Exception(response.error.message)
 
-        return {"message": f"Interview results for user {user_id} saved successfully!"}
+        return {"message": f"Interview results for user {user_id} saved successfully!", "data": response.data}
     except Exception as e:
         print(f"Error saving interview for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
