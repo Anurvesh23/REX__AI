@@ -20,11 +20,10 @@ def load_cross_encoder():
 	return _CROSS_ENCODER
 
 def load_generator():
-	# Placeholder for LLM generator loading (e.g., HuggingFace pipeline)
+	# Using a supported Gemini model as a placeholder generator.
 	global _GENERATOR
 	if _GENERATOR is None:
-		from transformers import pipeline
-		_GENERATOR = pipeline('text-generation', model='gpt2')
+		_GENERATOR = genai.GenerativeModel('gemini-2.5-flash')
 	return _GENERATOR
 
 def embed_texts(texts, model=None):

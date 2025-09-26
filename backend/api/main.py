@@ -345,7 +345,7 @@ async def analyze_resume(
 ):
     temp_path = None
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         validation_prompt = f"""
         Analyze the following text and determine if it is a valid job description. 
