@@ -584,6 +584,7 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
         
+
 @app.post("/save-analysis/")
 @limiter.limit("10 per minute")
 async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
@@ -599,28 +600,33 @@ async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: st
 
         record_to_save = {
             "user_id": user_id,
-            "job_description": sanitized_job_description,
-            "original_resume_text": sanitized_resume_text,
+            "job_description": data.job_description.replace('\u0000', ''),
+            "original_resume_text": data.original_resume_text.replace('\u0000', ''),
             "ai_score": data.overall_score,
             "keyword_match_score": data.job_match,
             "ats_score": data.ats_score,
-            "suggestions": combined_suggestions,
+            "suggestions": [
+                {"type": "success", "title": "Strength", "description": s, "impact": "Positive", "category": "General"} for s in data.strengths
+            ] + [
+                {"type": "improvement", "title": "Weakness", "description": w, "impact": "Medium", "category": "General"} for w in data.weaknesses
+            ] + data.suggestions,
             "keywords_matched": data.keywords_matched,
             "keywords_missing": data.keywords_missing,
         }
-
-        response = supabase.table("rex_ai").insert(record_to_save).execute()
+        
+        response = supabase.table("rex_ai").insert(record_to_save, returning="representation").execute()
         
         if response.error:
             error_message = response.error.message
             raise HTTPException(status_code=500, detail=f"Failed to save analysis to Supabase: {error_message}")
 
         return {"message": f"Analysis for user {user_id} saved successfully!"}
-
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
         print(f"Error saving analysis for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred in the Supabase client: {str(e)}")
+    
 @app.post("/save-test/")
 @limiter.limit("10 per minute")
 async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depends(get_current_user_id)):
