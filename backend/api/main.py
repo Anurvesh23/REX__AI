@@ -404,7 +404,7 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
     rewritten, optimized version using a generative AI model.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         **Task:** You are an expert career coach and resume writer. Your task is to completely rewrite and reformat the provided resume to be professional, ATS-friendly, and highly tailored to the given job description.
 
@@ -433,7 +433,7 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
 async def cover_letter_streamer(resume: str, job_description: str) -> AsyncGenerator[str, None]:
     """Generator function to stream the cover letter from the AI."""
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{resume}\n\nJOB DESCRIPTION:\n{job_description}"
         response_stream = model.generate_content(prompt, stream=True)
         for chunk in response_stream:
@@ -458,7 +458,7 @@ async def generate_cover_letter(request: Request, data: CoverLetterRequest, user
 @limiter.limit("5 per minute")
 async def start_skill_test(request: Request, data: StartTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""Generate {data.num_questions} unique, high-quality, and tricky multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' difficulty level. Return ONLY a valid JSON array of objects.
         **JSON Object Structure (per question):**
         ```json
@@ -477,7 +477,7 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
 @limiter.limit("10 per minute")
 async def evaluate_test(request: Request, data: EvaluateTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         Analyze the results of a mock test. Provide a comprehensive analysis in a strict JSON format.
         - **Questions:** {json.dumps(data.questions)}
@@ -715,7 +715,7 @@ async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depend
 @limiter.limit("10 per minute")
 async def rewrite_description(request: Request, data: RewriteRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         As an expert resume writer, rewrite the following job description for a '{data.title}' position to be more impactful and action-oriented. 
         Focus on achievements and quantifiable results. Use strong action verbs and concise language.
@@ -758,7 +758,7 @@ async def load_resume_data(user_id: str = Depends(get_current_user_id)):
 @limiter.limit("5 per minute")
 async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         resume_json_str = data.json()
 
         prompt = f"""
