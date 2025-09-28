@@ -7,6 +7,7 @@ import os
 import json
 import uuid
 from typing import List, Optional, Dict, Any, AsyncGenerator
+import asyncpg
 
 # --- Environment and AI ---
 import google.generativeai as genai
@@ -34,9 +35,6 @@ from pydantic import BaseModel
 from fpdf import FPDF
 from gtts import gTTS
 
-# --- Supabase ---
-from supabase import create_client, Client
-
 # Add parent directory to system path for local module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import save_upload_to_temp, extract_text_from_path
@@ -52,17 +50,38 @@ try:
 except Exception as e:
     print(f"FATAL: Error configuring Gemini AI. Please check your GOOGLE_API_KEY. Error: {e}")
 
-# --- Supabase Configuration ---
-SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") # IMPORTANT: Use Service Role Key for backend
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Supabase URL or Service Role Key is not set in the environment.")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-print("--- Supabase client configured successfully. ---")
+# --- AWS RDS Configuration ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in the environment for RDS connection.")
 
+# Create a connection pool for the database
+db_pool = None
+
+async def get_db_connection():
+    if db_pool is None:
+        raise HTTPException(status_code=500, detail="Database connection pool is not initialized.")
+    async with db_pool.acquire() as connection:
+        yield connection
 
 # --- App & Middleware Setup ---
 app = FastAPI(title="Rex--AI API")
+
+@app.on_event("startup")
+async def startup():
+    global db_pool
+    try:
+        db_pool = await asyncpg.create_pool(dsn=DATABASE_URL)
+        print("--- Database connection pool created successfully. ---")
+    except Exception as e:
+        print(f"FATAL: Could not connect to the database. Error: {e}")
+        db_pool = None
+
+@app.on_event("shutdown")
+async def shutdown():
+    if db_pool:
+        await db_pool.close()
+        print("--- Database connection pool closed. ---")
 
 # Security: Rate Limiting
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
@@ -72,7 +91,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Security: CORS Configuration
 origins = [
     os.getenv("FRONTEND_URL", "http://localhost:3000"),
-    # Add your production frontend URL here, e.g., "https://your-app.vercel.app"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -89,14 +107,10 @@ app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
 # --- Security: Authentication ---
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-
-# FIX: Added .strip() to safely remove any invisible spaces
-# which causes persistent 401 errors.
 if SUPABASE_JWT_SECRET:
     SUPABASE_JWT_SECRET = SUPABASE_JWT_SECRET.strip()
-
 if not SUPABASE_JWT_SECRET:
-    raise ValueError("SUPABASE_JWT_SECRET is not set in the environment. Please add it to your .env file.")
+    raise ValueError("SUPABASE_JWT_SECRET is not set in the environment.")
 
 async def get_current_user_id(authorization: str = Header(None)):
     """Dependency to extract and validate user ID from Supabase JWT."""
@@ -256,7 +270,6 @@ async def analyze_resume(
 ):
     temp_path = None
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         
         validation_prompt = f"""
@@ -316,7 +329,6 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
     rewritten, optimized version using a generative AI model.
     """
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         **Task:** You are an expert career coach and resume writer. Your task is to completely rewrite and reformat the provided resume to be professional, ATS-friendly, and highly tailored to the given job description.
@@ -346,7 +358,6 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
 async def cover_letter_streamer(resume: str, job_description: str) -> AsyncGenerator[str, None]:
     """Generator function to stream the cover letter from the AI."""
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{resume}\n\nJOB DESCRIPTION:\n{job_description}"
         response_stream = model.generate_content(prompt, stream=True)
@@ -372,7 +383,6 @@ async def generate_cover_letter(request: Request, data: CoverLetterRequest, user
 @limiter.limit("5 per minute")
 async def start_skill_test(request: Request, data: StartTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""Generate {data.num_questions} unique, high-quality, and tricky multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' difficulty level. Return ONLY a valid JSON array of objects.
         **JSON Object Structure (per question):**
@@ -392,7 +402,6 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
 @limiter.limit("10 per minute")
 async def evaluate_test(request: Request, data: EvaluateTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         Analyze the results of a mock test. Provide a comprehensive analysis in a strict JSON format.
@@ -503,81 +512,90 @@ async def generate_test_report_pdf(request: Request, data: TestReportRequest, us
 
 @app.post("/save-analysis/")
 @limiter.limit("10 per minute")
-async def save_analysis(request: Request, data: SaveAnalysisRequest, user_id: str = Depends(get_current_user_id)):
+async def save_analysis(
+    request: Request,
+    data: SaveAnalysisRequest,
+    user_id: str = Depends(get_current_user_id),
+    conn: asyncpg.Connection = Depends(get_db_connection)
+):
     try:
         sanitized_job_description = data.job_description.replace('\u0000', '')
         sanitized_resume_text = data.original_resume_text.replace('\u0000', '')
         
-        # FIX 1: Use list() to safely copy the array before modification
         combined_suggestions = list(data.suggestions)
         for strength in data.strengths:
             combined_suggestions.append({"type": "success", "title": "Strength", "description": strength, "impact": "Positive", "category": "General"})
         for weakness in data.weaknesses:
             combined_suggestions.append({"type": "improvement", "title": "Weakness", "description": weakness, "impact": "Medium", "category": "General"})
 
-        record_to_save = {
-            "user_id": user_id,
-            # FIX 2: Added missing job_title field
-            "job_title": data.job_title or "Resume Analysis", 
-            "job_description": sanitized_job_description,
-            "original_resume_text": sanitized_resume_text,
-            "ai_score": data.overall_score,
-            "keyword_match_score": data.job_match,
-            "ats_score": data.ats_score,
-            "suggestions": combined_suggestions,
-            "keywords_matched": data.keywords_matched,
-            "keywords_missing": data.keywords_missing,
-        }
-
-        # FIX: Revert to the most minimal and basic INSERT syntax. 
-        # This relies purely on the client successfully parsing an empty 201 response.
-        response = supabase.table("rex_ai").insert(record_to_save).execute()
+        await conn.execute(
+            """
+            INSERT INTO rex_ai (
+                user_id, job_title, job_description, original_resume_text, ai_score, 
+                keyword_match_score, ats_score, suggestions, keywords_matched, keywords_missing
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            """,
+            user_id,
+            data.job_title or "Resume Analysis",
+            sanitized_job_description,
+            sanitized_resume_text,
+            data.overall_score,
+            data.job_match,
+            data.ats_score,
+            json.dumps(combined_suggestions),
+            json.dumps(data.keywords_matched),
+            json.dumps(data.keywords_missing)
+        )
         
-        if response.error:
-            error_message = response.error.message
-            # RLS or other database errors will now be caught here.
-            raise HTTPException(status_code=500, detail=f"Failed to save analysis to Supabase: {error_message}")
-
         return {"message": f"Analysis for user {user_id} saved successfully!"}
-
     except Exception as e:
         print(f"Error saving analysis for user {user_id}: {e}")
-        # Note: If this still prints the JSON error, the only answer is to upgrade `supabase-py`
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/save-test/")
 @limiter.limit("10 per minute")
-async def save_test(request: Request, data: SaveTestRequest, user_id: str = Depends(get_current_user_id)):
+async def save_test(
+    request: Request,
+    data: SaveTestRequest,
+    user_id: str = Depends(get_current_user_id),
+    conn: asyncpg.Connection = Depends(get_db_connection)
+):
     try:
-        insert_data = {
-            "user_id": user_id,
-            "job_role": data.job_role,
-            "difficulty": data.difficulty,
-            "overall_score": data.overall_score,
-            "duration_minutes": data.duration_minutes,
-            "questions": data.questions,
-            "answers": data.answers,
-            "feedback": data.feedback,
-            "suggestions": data.suggestions,
-            "category_scores": data.category_scores,
-            "status": "completed"
-        }
-        
-        # RECTIFICATION: Removed returning='minimal' to fix client-side JSON parsing issue.
-        # This forces the database to return the inserted record as valid JSON.
-        response = supabase.table('mock_tests').insert(insert_data).execute()
-
-        if response.error:
-            raise Exception(response.error.message)
-
-        return {"message": f"Test results for user {user_id} saved successfully!", "data": response.data}
+        new_record = await conn.fetchrow(
+            """
+            INSERT INTO mock_tests (
+                user_id, job_role, difficulty, overall_score, duration_minutes,
+                questions, answers, feedback, suggestions, category_scores, status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING *
+            """,
+            user_id,
+            data.job_role,
+            data.difficulty,
+            data.overall_score,
+            data.duration_minutes,
+            json.dumps(data.questions),
+            json.dumps(data.answers),
+            data.feedback,
+            json.dumps(data.suggestions),
+            json.dumps(data.category_scores),
+            "completed"
+        )
+        return {"message": f"Test results for user {user_id} saved successfully!", "data": dict(new_record)}
     except Exception as e:
         print(f"Error saving test for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/save-interview/")
 @limiter.limit("10 per minute")
-async def save_interview(request: Request, data: SaveInterviewRequest, user_id: str = Depends(get_current_user_id)):
+async def save_interview(
+    request: Request,
+    data: SaveInterviewRequest,
+    user_id: str = Depends(get_current_user_id),
+    conn: asyncpg.Connection = Depends(get_db_connection)
+):
     try:
         settings_data = {
             "num_questions": len(data.questions),
@@ -585,65 +603,67 @@ async def save_interview(request: Request, data: SaveInterviewRequest, user_id: 
             "focus_areas": ["general", "technical"] 
         }
 
-        insert_data = {
-            "user_id": user_id,
-            "job_role": data.job_role,
-            "interview_type": "mixed",
-            "settings": settings_data,
-            "overall_score": data.overall_score,
-            "duration_minutes": data.duration_minutes,
-            "questions": data.questions,
-            "answers": data.answers,
-            "feedback": data.feedback,
-            "suggestions": data.suggestions,
-            "category_scores": data.category_scores,
-            "status": "completed"
-        }
-        
-        # RECTIFICATION: Removed returning='minimal' to fix client-side JSON parsing issue.
-        response = supabase.table('mock_interviews').insert(insert_data).execute()
-
-        if response.error:
-            raise Exception(response.error.message)
-
-        return {"message": f"Interview results for user {user_id} saved successfully!", "data": response.data}
+        new_record = await conn.fetchrow(
+            """
+            INSERT INTO mock_interviews (
+                user_id, job_role, interview_type, settings, overall_score,
+                duration_minutes, questions, answers, feedback, suggestions,
+                category_scores, status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING *
+            """,
+            user_id,
+            data.job_role,
+            "mixed",
+            json.dumps(settings_data),
+            data.overall_score,
+            data.duration_minutes,
+            json.dumps(data.questions),
+            json.dumps(data.answers),
+            data.feedback,
+            json.dumps(data.suggestions),
+            json.dumps(data.category_scores),
+            "completed"
+        )
+        return {"message": f"Interview results for user {user_id} saved successfully!", "data": dict(new_record)}
     except Exception as e:
         print(f"Error saving interview for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/save-job/")
 @limiter.limit("10 per minute")
-async def save_job(request: Request, data: SaveJobRequest, user_id: str = Depends(get_current_user_id)):
+async def save_job(
+    request: Request,
+    data: SaveJobRequest,
+    user_id: str = Depends(get_current_user_id),
+    conn: asyncpg.Connection = Depends(get_db_connection)
+):
     try:
-        existing_job_response = supabase.table('saved_jobs').select("id").eq("user_id", user_id).eq("job_title", data.job_title).eq("company", data.company_name).execute()
-        if len(existing_job_response.data) > 0:
+        existing_job = await conn.fetchrow(
+            "SELECT id FROM saved_jobs WHERE user_id = $1 AND job_title = $2 AND company = $3",
+            user_id, data.job_title, data.company_name
+        )
+        if existing_job:
             return {"message": "Job already saved."}
 
-        insert_data = {
-            "user_id": user_id,
-            "job_title": data.job_title,
-            "company": data.company_name,
-            "location": data.location,
-            "external_url": data.job_url,
-            "application_status": data.application_status
-        }
-        
-        # FIX: Using returning='minimal' to avoid JSON parsing bug in older client
-        response = supabase.table('saved_jobs').insert(insert_data, returning='minimal').execute()
-
-        if not response.data:
-            raise Exception("Failed to insert job data into database.")
-
+        await conn.execute(
+            """
+            INSERT INTO saved_jobs (user_id, job_title, company, location, external_url, application_status)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            """,
+            user_id, data.job_title, data.company_name, data.location, data.job_url, data.application_status
+        )
         return {"message": f"Job saved successfully for user {user_id}!"}
     except Exception as e:
         print(f"Error saving job for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/resume-builder/rewrite-description/")
 @limiter.limit("10 per minute")
 async def rewrite_description(request: Request, data: RewriteRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         As an expert resume writer, rewrite the following job description for a '{data.title}' position to be more impactful and action-oriented. 
@@ -687,7 +707,6 @@ async def load_resume_data(user_id: str = Depends(get_current_user_id)):
 @limiter.limit("5 per minute")
 async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_id: str = Depends(get_current_user_id)):
     try:
-        # FIX: Updated model name
         model = genai.GenerativeModel('gemini-2.5-flash')
         resume_json_str = data.json()
 

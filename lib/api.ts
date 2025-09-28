@@ -37,7 +37,7 @@ const getSupabaseAuthHeaders = async () => {
  * @param body - The request body (can be FormData or a JSON object).
  */
 const createAuthenticatedRequest = async (
-  method: "POST" | "GET",
+  method: "POST" | "GET" | "DELETE" | "PUT",
   body?: any
 ): Promise<RequestInit> => {
   const headers = await getSupabaseAuthHeaders();
@@ -139,10 +139,9 @@ export const resumeAPI = {
 
   /**
    * Saves the result of a resume analysis via the backend. (Secured)
-   * The user_id is handled by the backend via the JWT.
    */
   async saveAnalysis(analysisData: Partial<Resume>) {
-    const { user_id, ...payload } = analysisData; // Exclude user_id from frontend payload
+    const { user_id, ...payload } = analysisData;
     const config = await createAuthenticatedRequest("POST", payload);
     const response = await fetch(`${API_BASE_URL}/save-analysis/`, config);
 
@@ -184,25 +183,22 @@ export const resumeAPI = {
   },
 
   /**
-   * Retrieves all past resume analyses for a user directly from Supabase.
+   * Retrieves all past resume analyses for a user by calling the backend API.
    */
   async getUserResumes(userId: string): Promise<ResumeAnalysis[]> {
-    const { data, error } = await supabase
-      .from("rex_ai")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data;
+    const config = await createAuthenticatedRequest("GET");
+    const response = await fetch(`${API_BASE_URL}/resumes/?user_id=${userId}`, config);
+    if (!response.ok) throw new Error("Failed to fetch resume history.");
+    return response.json();
   },
 
   /**
-   * Deletes a specific resume analysis directly from Supabase.
+   * Deletes a specific resume analysis via the backend API.
    */
   async deleteResume(resumeId: string) {
-    const { error } = await supabase.from("rex_ai").delete().eq("id", resumeId);
-    if (error) throw error;
+    const config = await createAuthenticatedRequest("DELETE");
+    const response = await fetch(`${API_BASE_URL}/resumes/${resumeId}`, config);
+    if (!response.ok) throw new Error("Failed to delete analysis.");
   },
 };
 
@@ -356,31 +352,23 @@ export const mockAPI = {
   },
 
   /**
-   * Retrieves all past mock tests for a user directly from Supabase.
+   * Retrieves all past mock tests for a user from the backend API.
    */
   async getUserMockTests(userId: string): Promise<MockTest[]> {
-    const { data, error } = await supabase
-      .from("mock_tests")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data;
+    const config = await createAuthenticatedRequest("GET");
+    const response = await fetch(`${API_BASE_URL}/mock-tests/?user_id=${userId}`, config);
+    if (!response.ok) throw new Error("Failed to fetch mock test history.");
+    return response.json();
   },
 
   /**
-   * Retrieves all past interviews for a user directly from Supabase.
+   * Retrieves all past interviews for a user from the backend API.
    */
   async getUserInterviews(userId: string): Promise<MockInterview[]> {
-    const { data, error } = await supabase
-      .from("mock_interviews")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data;
+    const config = await createAuthenticatedRequest("GET");
+    const response = await fetch(`${API_BASE_URL}/interviews/?user_id=${userId}`, config);
+    if (!response.ok) throw new Error("Failed to fetch interview history.");
+    return response.json();
   },
   /**
    * Generates audio from text using the backend. (Secured)
@@ -417,42 +405,34 @@ export const jobAPI = {
   },
 
   /**
-   * Retrieves all saved jobs for a user directly from Supabase.
+   * Retrieves all saved jobs for a user from the backend API.
    */
   async getSavedJobs(userId: string): Promise<SavedJob[]> {
-    const { data, error } = await supabase
-      .from("saved_jobs")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data;
+    const config = await createAuthenticatedRequest("GET");
+    const response = await fetch(`${API_BASE_URL}/jobs/?user_id=${userId}`, config);
+    if (!response.ok) throw new Error("Failed to fetch saved jobs.");
+    return response.json();
   },
 
   /**
-   * Updates the status of a saved job directly in Supabase.
+   * Updates the status of a saved job via the backend API.
    */
   async updateJobStatus(
     jobId: string,
     status: SavedJob["application_status"]
   ): Promise<SavedJob> {
-    const { data, error } = await supabase
-      .from("saved_jobs")
-      .update({ application_status: status })
-      .eq("id", jobId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const config = await createAuthenticatedRequest("PUT", { application_status: status });
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, config);
+    if (!response.ok) throw new Error("Failed to update job status.");
+    return response.json();
   },
 
   /**
-   * Deletes a saved job directly from Supabase.
+   * Deletes a saved job via the backend API.
    */
   async deleteJob(jobId: string) {
-    const { error } = await supabase.from("saved_jobs").delete().eq("id", jobId);
-    if (error) throw error;
+    const config = await createAuthenticatedRequest("DELETE");
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, config);
+    if (!response.ok) throw new Error("Failed to delete job.");
   },
 };

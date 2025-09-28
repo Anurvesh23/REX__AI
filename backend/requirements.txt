@@ -20,3 +20,4 @@ pip-audit
 pyjwt[cryptography]
 supabase
 weasyprint
+asyncpg
