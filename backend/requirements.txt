@@ -1,23 +1,32 @@
+# Core Web Framework
 fastapi
 uvicorn[standard]
-python-dotenv
-google-generativeai
-python-multipart
-fpdf
-spacy
-sentence-transformers
-faiss-cpu
-numpy
-docx2txt
-PyMuPDF
-Pillow
-spacy[en_core_web_sm]
-gTTS
-# Security additions
-slowapi
-pip-audit
-# Secure JWT library replacing python-jose
+
+# Authentication & Database
+asyncpg
+clerk-python
 pyjwt[cryptography]
 supabase
+
+# AI & Machine Learning
+faiss-cpu
+google-generativeai
+gTTS
+numpy
+sentence-transformers
+spacy
+
+# Document & File Processing
+docx2txt
+fpdf
+Pillow
+PyMuPDF
+python-multipart
 weasyprint
-asyncpg
+
+# Security
+pip-audit
+slowapi
+
+# Utilities
+python-dotenv

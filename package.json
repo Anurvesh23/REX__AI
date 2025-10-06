@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.33.2",
     "@emotion/is-prop-valid": "latest",
     "@google/generative-ai": "latest",
     "@hookform/resolvers": "^3.9.1",
@@ -39,7 +40,6 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
-    "@supabase/supabase-js": "latest",
     "@tensorflow-models/face-landmarks-detection": "^1.0.2",
     "@tensorflow/tfjs-backend-webgl": "^4.10.0",
     "@tensorflow/tfjs-converter": "^4.10.0",

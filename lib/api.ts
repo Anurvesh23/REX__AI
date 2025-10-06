@@ -1,6 +1,5 @@
 // lib/api.ts
 
-import { supabase } from "./supabase";
 import type {
   Resume,
   MockInterview,
@@ -13,34 +12,43 @@ import type {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
+// --- Type Definition for Clerk's getToken function ---
+type GetTokenFn = (options?: {
+  template?: string;
+}) => Promise<string | null>;
+
 // --- Authentication & Request Helpers ---
 
 /**
- * Retrieves Supabase authentication headers, including the JWT.
+ * Retrieves Clerk authentication headers, including the JWT from a specific template.
+ * This function is designed to be used by createAuthenticatedRequest.
  * Throws an error if the user is not authenticated.
+ * @param getToken - The `getToken` function from Clerk's `useAuth` hook.
  */
-const getSupabaseAuthHeaders = async () => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+const getClerkAuthHeaders = async (getToken: GetTokenFn) => {
+  // IMPORTANT: Replace 'fastapi-template' with the name of the JWT Template you created in your Clerk Dashboard.
+  const token = await getToken({ template: "fastapi-template" });
+  if (!token) {
     throw new Error("User is not authenticated. Cannot perform this action.");
   }
   return {
-    Authorization: `Bearer ${session.access_token}`,
+    Authorization: `Bearer ${token}`,
   };
 };
 
 /**
  * Creates a fetch configuration with authentication headers.
+ * This function must be called from a Client Component context where Clerk's useAuth hook is available.
+ * @param getToken - The `getToken` function from Clerk's `useAuth` hook.
  * @param method - HTTP method (e.g., 'POST').
  * @param body - The request body (can be FormData or a JSON object).
  */
 const createAuthenticatedRequest = async (
+  getToken: GetTokenFn,
   method: "POST" | "GET" | "DELETE" | "PUT",
   body?: any
 ): Promise<RequestInit> => {
-  const headers = await getSupabaseAuthHeaders();
+  const headers = await getClerkAuthHeaders(getToken);
   const config: RequestInit = {
     method,
     headers: {
@@ -63,12 +71,16 @@ export const resumeAPI = {
   /**
    * Sends resume and job description to the backend for AI analysis. (Secured)
    */
-  async analyzeResume(resumeFile: File, jobDescription: string) {
+  async analyzeResume(
+    getToken: GetTokenFn,
+    resumeFile: File,
+    jobDescription: string
+  ) {
     const formData = new FormData();
     formData.append("jd_text", jobDescription);
     formData.append("file", resumeFile);
 
-    const config = await createAuthenticatedRequest("POST", formData);
+    const config = await createAuthenticatedRequest(getToken, "POST", formData);
     const response = await fetch(`${API_BASE_URL}/analyze/`, config);
 
     if (!response.ok) {
@@ -82,12 +94,13 @@ export const resumeAPI = {
    * Generates a cover letter using the backend AI. (Secured)
    */
   async generateCoverLetter(
+    getToken: GetTokenFn,
     resumeText: string,
     jobDescription: string,
     onChunk: (chunk: string) => void
   ) {
     const payload = { resume: resumeText, job_description: jobDescription };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(
       `${API_BASE_URL}/generate-cover-letter/`,
       config
@@ -117,6 +130,7 @@ export const resumeAPI = {
    * Sends original resume and JD to the backend for a full AI rewrite. (Secured)
    */
   async generateOptimizedResume(
+    getToken: GetTokenFn,
     resumeText: string,
     jobDescription: string
   ): Promise<{ optimized_resume_text: string }> {
@@ -124,7 +138,7 @@ export const resumeAPI = {
       resume_text: resumeText,
       job_description: jobDescription,
     };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(
       `${API_BASE_URL}/generate-optimized-resume/`,
       config
@@ -140,9 +154,9 @@ export const resumeAPI = {
   /**
    * Saves the result of a resume analysis via the backend. (Secured)
    */
-  async saveAnalysis(analysisData: Partial<Resume>) {
+  async saveAnalysis(getToken: GetTokenFn, analysisData: Partial<Resume>) {
     const { user_id, ...payload } = analysisData;
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/save-analysis/`, config);
 
     if (!response.ok) throw new Error("Failed to save analysis.");
@@ -152,8 +166,15 @@ export const resumeAPI = {
   /**
    * Generates a PDF report for a resume analysis from the backend. (Secured)
    */
-  async generateAnalysisReport(reportData: any): Promise<Blob> {
-    const config = await createAuthenticatedRequest("POST", reportData);
+  async generateAnalysisReport(
+    getToken: GetTokenFn,
+    reportData: any
+  ): Promise<Blob> {
+    const config = await createAuthenticatedRequest(
+      getToken,
+      "POST",
+      reportData
+    );
     const response = await fetch(
       `${API_BASE_URL}/generate-analysis-pdf/`,
       config
@@ -168,9 +189,12 @@ export const resumeAPI = {
   /**
    * Generates a PDF of the AI-optimized resume from the backend. (Secured)
    */
-  async generateAiResumePdf(optimizedResumeText: string): Promise<Blob> {
+  async generateAiResumePdf(
+    getToken: GetTokenFn,
+    optimizedResumeText: string
+  ): Promise<Blob> {
     const payload = { optimized_resume_text: optimizedResumeText };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(
       `${API_BASE_URL}/generate-ai-resume-pdf/`,
       config
@@ -185,9 +209,15 @@ export const resumeAPI = {
   /**
    * Retrieves all past resume analyses for a user by calling the backend API.
    */
-  async getUserResumes(userId: string): Promise<ResumeAnalysis[]> {
-    const config = await createAuthenticatedRequest("GET");
-    const response = await fetch(`${API_BASE_URL}/resumes/?user_id=${userId}`, config);
+  async getUserResumes(
+    getToken: GetTokenFn,
+    userId: string
+  ): Promise<ResumeAnalysis[]> {
+    const config = await createAuthenticatedRequest(getToken, "GET");
+    const response = await fetch(
+      `${API_BASE_URL}/resumes/?user_id=${userId}`,
+      config
+    );
     if (!response.ok) throw new Error("Failed to fetch resume history.");
     return response.json();
   },
@@ -195,23 +225,26 @@ export const resumeAPI = {
   /**
    * Deletes a specific resume analysis via the backend API.
    */
-  async deleteResume(resumeId: string) {
-    const config = await createAuthenticatedRequest("DELETE");
+  async deleteResume(getToken: GetTokenFn, resumeId: string) {
+    const config = await createAuthenticatedRequest(getToken, "DELETE");
     const response = await fetch(`${API_BASE_URL}/resumes/${resumeId}`, config);
     if (!response.ok) throw new Error("Failed to delete analysis.");
   },
 };
+
+// --- Resume Builder API ---
 
 export const resumeBuilderAPI = {
   /**
    * Sends an experience description to the backend for an AI rewrite. (Secured)
    */
   async rewriteDescription(
+    getToken: GetTokenFn,
     title: string,
     description: string
   ): Promise<{ rewritten_description: string }> {
     const payload = { title, description };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(
       `${API_BASE_URL}/resume-builder/rewrite-description/`,
       config
@@ -227,19 +260,23 @@ export const resumeBuilderAPI = {
   /**
    * Sends the entire resume data object for AI improvement. (Secured)
    */
-  async improveResume(resumeData: any): Promise<any> {
-    const config = await createAuthenticatedRequest("POST", resumeData);
+  async improveResume(getToken: GetTokenFn, resumeData: any): Promise<any> {
+    const config = await createAuthenticatedRequest(
+      getToken,
+      "POST",
+      resumeData
+    );
     const response = await fetch(
       `${API_BASE_URL}/resume-builder/improve-resume/`,
       config
     );
 
     if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`AI improvement failed: ${errorText}`);
+      const errorText = await response.text();
+      throw new Error(`AI improvement failed: ${errorText}`);
     }
     return response.json();
-  }
+  },
 };
 
 // --- Mock Interview & Mock Test API ---
@@ -249,6 +286,7 @@ export const mockAPI = {
    * Generates mock test questions from the backend. (Secured)
    */
   async generateQuestions(
+    getToken: GetTokenFn,
     jobRole: string,
     difficulty = "medium",
     settings = { num_questions: 10 }
@@ -258,7 +296,7 @@ export const mockAPI = {
       difficulty: difficulty,
       num_questions: settings.num_questions,
     };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/interview/start/`, config);
 
     if (!response.ok) throw new Error("Failed to generate questions.");
@@ -273,9 +311,9 @@ export const mockAPI = {
   /**
    * Submits a completed mock test to the backend for evaluation. (Secured)
    */
-  async evaluateTest(questions: any[], answers: any[]) {
+  async evaluateTest(getToken: GetTokenFn, questions: any[], answers: any[]) {
     const payload = { questions, answers };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(
       `${API_BASE_URL}/interview/evaluate-test/`,
       config
@@ -291,8 +329,11 @@ export const mockAPI = {
   /**
    * Submits answers from a video interview for evaluation. (Secured)
    */
-  async evaluateAnswers(payload: { questions: any[]; answers: any[] }) {
-    const config = await createAuthenticatedRequest("POST", payload);
+  async evaluateAnswers(
+    getToken: GetTokenFn,
+    payload: { questions: any[]; answers: any[] }
+  ) {
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(
       `${API_BASE_URL}/interview/evaluate-answers/`,
       config
@@ -308,8 +349,15 @@ export const mockAPI = {
   /**
    * Generates a PDF report for a mock test from the backend. (Secured)
    */
-  async generateTestReport(reportData: any): Promise<Blob> {
-    const config = await createAuthenticatedRequest("POST", reportData);
+  async generateTestReport(
+    getToken: GetTokenFn,
+    reportData: any
+  ): Promise<Blob> {
+    const config = await createAuthenticatedRequest(
+      getToken,
+      "POST",
+      reportData
+    );
     const response = await fetch(
       `${API_BASE_URL}/interview/generate-report-pdf/`,
       config
@@ -324,9 +372,9 @@ export const mockAPI = {
   /**
    * Saves mock test results via the backend. (Secured)
    */
-  async saveTest(testData: Partial<MockTest>) {
+  async saveTest(getToken: GetTokenFn, testData: Partial<MockTest>) {
     const { user_id, ...payload } = testData;
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/save-test/`, config);
 
     if (!response.ok) {
@@ -339,9 +387,12 @@ export const mockAPI = {
   /**
    * Saves interview results via the backend. (Secured)
    */
-  async saveInterview(interviewData: Partial<MockInterview>) {
+  async saveInterview(
+    getToken: GetTokenFn,
+    interviewData: Partial<MockInterview>
+  ) {
     const { user_id, ...payload } = interviewData;
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/save-interview/`, config);
 
     if (!response.ok) {
@@ -354,9 +405,15 @@ export const mockAPI = {
   /**
    * Retrieves all past mock tests for a user from the backend API.
    */
-  async getUserMockTests(userId: string): Promise<MockTest[]> {
-    const config = await createAuthenticatedRequest("GET");
-    const response = await fetch(`${API_BASE_URL}/mock-tests/?user_id=${userId}`, config);
+  async getUserMockTests(
+    getToken: GetTokenFn,
+    userId: string
+  ): Promise<MockTest[]> {
+    const config = await createAuthenticatedRequest(getToken, "GET");
+    const response = await fetch(
+      `${API_BASE_URL}/mock-tests/?user_id=${userId}`,
+      config
+    );
     if (!response.ok) throw new Error("Failed to fetch mock test history.");
     return response.json();
   },
@@ -364,18 +421,25 @@ export const mockAPI = {
   /**
    * Retrieves all past interviews for a user from the backend API.
    */
-  async getUserInterviews(userId: string): Promise<MockInterview[]> {
-    const config = await createAuthenticatedRequest("GET");
-    const response = await fetch(`${API_BASE_URL}/interviews/?user_id=${userId}`, config);
+  async getUserInterviews(
+    getToken: GetTokenFn,
+    userId: string
+  ): Promise<MockInterview[]> {
+    const config = await createAuthenticatedRequest(getToken, "GET");
+    const response = await fetch(
+      `${API_BASE_URL}/interviews/?user_id=${userId}`,
+      config
+    );
     if (!response.ok) throw new Error("Failed to fetch interview history.");
     return response.json();
   },
+
   /**
    * Generates audio from text using the backend. (Secured)
    */
-  async speak(text: string) {
+  async speak(getToken: GetTokenFn, text: string) {
     const payload = { text };
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/interview/speak/`, config);
 
     if (!response.ok) {
@@ -392,9 +456,12 @@ export const jobAPI = {
   /**
    * Saves a job listing via the backend. (Secured)
    */
-  async saveJob(jobData: Partial<SavedJob>): Promise<{ message: string }> {
+  async saveJob(
+    getToken: GetTokenFn,
+    jobData: Partial<SavedJob>
+  ): Promise<{ message: string }> {
     const { user_id, ...payload } = jobData;
-    const config = await createAuthenticatedRequest("POST", payload);
+    const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/save-job/`, config);
 
     if (!response.ok) {
@@ -407,9 +474,15 @@ export const jobAPI = {
   /**
    * Retrieves all saved jobs for a user from the backend API.
    */
-  async getSavedJobs(userId: string): Promise<SavedJob[]> {
-    const config = await createAuthenticatedRequest("GET");
-    const response = await fetch(`${API_BASE_URL}/jobs/?user_id=${userId}`, config);
+  async getSavedJobs(
+    getToken: GetTokenFn,
+    userId: string
+  ): Promise<SavedJob[]> {
+    const config = await createAuthenticatedRequest(getToken, "GET");
+    const response = await fetch(
+      `${API_BASE_URL}/jobs/?user_id=${userId}`,
+      config
+    );
     if (!response.ok) throw new Error("Failed to fetch saved jobs.");
     return response.json();
   },
@@ -418,10 +491,13 @@ export const jobAPI = {
    * Updates the status of a saved job via the backend API.
    */
   async updateJobStatus(
+    getToken: GetTokenFn,
     jobId: string,
     status: SavedJob["application_status"]
   ): Promise<SavedJob> {
-    const config = await createAuthenticatedRequest("PUT", { application_status: status });
+    const config = await createAuthenticatedRequest(getToken, "PUT", {
+      application_status: status,
+    });
     const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, config);
     if (!response.ok) throw new Error("Failed to update job status.");
     return response.json();
@@ -430,8 +506,8 @@ export const jobAPI = {
   /**
    * Deletes a saved job via the backend API.
    */
-  async deleteJob(jobId: string) {
-    const config = await createAuthenticatedRequest("DELETE");
+  async deleteJob(getToken: GetTokenFn, jobId: string) {
+    const config = await createAuthenticatedRequest(getToken, "DELETE");
     const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, config);
     if (!response.ok) throw new Error("Failed to delete job.");
   },
