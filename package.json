@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "dev:backend": "uvicorn backend.api.main:app --reload"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.2",

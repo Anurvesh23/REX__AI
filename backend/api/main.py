@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security ---
-from clerk_backend_api import Clerk , UnauthenticatedError
+from clerk_backend_api import Clerk, ClerkError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -40,12 +40,16 @@ from utils import save_upload_to_temp, extract_text_from_path
 load_dotenv()
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
+    clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables.")
+    if not clerk_secret_key:
+        raise ValueError("CLERK_SECRET_KEY not found in environment variables.")
     genai.configure(api_key=api_key)
     print("--- Gemini AI configured successfully. ---")
 except Exception as e:
-    print(f"FATAL: Error configuring Gemini AI. Please check your GOOGLE_API_KEY. Error: {e}")
+    print(f"FATAL: Error configuring services. Please check your environment variables. Error: {e}")
+
 
 # --- AWS RDS Configuration ---
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -106,7 +110,9 @@ if not os.path.exists("temp_audio"):
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
 # --- Security: Authentication ---
-clerk_client = Clerk()
+# Initialize the Clerk SDK client. The upstream clerk_backend_api.Clerk expects a
+# bearer_auth argument (the API key/token) rather than `secret_key`.
+clerk_client = Clerk(bearer_auth=clerk_secret_key)
 
 async def get_current_user_id(authorization: str = Header(None)):
     """Dependency to extract and validate user ID from a Clerk JWT."""
@@ -120,7 +126,9 @@ async def get_current_user_id(authorization: str = Header(None)):
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: user ID is missing")
         return user_id
-    except UnauthenticatedError as e:
+    except ClerkError as e:
+        # ClerkError is the base exception type exposed by the clerk package for API/auth related errors.
+        # Map it to a 401 Unauthorized HTTP response for the client.
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
     except (IndexError, Exception) as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token format or other error: {e}")
@@ -305,7 +313,7 @@ async def analyze_resume(
 ):
     temp_path = None
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         
         validation_prompt = f"""
         Analyze the following text and determine if it is a valid job description. 
@@ -364,7 +372,7 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
     rewritten, optimized version using a generative AI model.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         prompt = f"""
         **Task:** You are an expert career coach and resume writer. Your task is to completely rewrite and reformat the provided resume to be professional, ATS-friendly, and highly tailored to the given job description.
 
@@ -393,7 +401,7 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
 async def cover_letter_streamer(resume: str, job_description: str) -> AsyncGenerator[str, None]:
     """Generator function to stream the cover letter from the AI."""
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{resume}\n\nJOB DESCRIPTION:\n{job_description}"
         response_stream = model.generate_content(prompt, stream=True)
         for chunk in response_stream:
@@ -418,7 +426,7 @@ async def generate_cover_letter(request: Request, data: CoverLetterRequest, user
 @limiter.limit("5 per minute")
 async def start_skill_test(request: Request, data: StartTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         prompt = f"""Generate {data.num_questions} unique, high-quality, and tricky multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' difficulty level. Return ONLY a valid JSON array of objects.
         **JSON Object Structure (per question):**
         ```json
@@ -437,7 +445,7 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
 @limiter.limit("10 per minute")
 async def evaluate_test(request: Request, data: EvaluateTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         prompt = f"""
         Analyze the results of a mock test. Provide a comprehensive analysis in a strict JSON format.
         - **Questions:** {json.dumps(data.questions)}
@@ -699,7 +707,7 @@ async def save_job(
 @limiter.limit("10 per minute")
 async def rewrite_description(request: Request, data: RewriteRequest, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         prompt = f"""
         As an expert resume writer, rewrite the following job description for a '{data.title}' position to be more impactful and action-oriented. 
         Focus on achievements and quantifiable results. Use strong action verbs and concise language.
@@ -737,7 +745,7 @@ async def load_resume_data(user_id: str = Depends(get_current_user_id)):
 @limiter.limit("5 per minute")
 async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_id: str = Depends(get_current_user_id)):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         resume_json_str = data.json()
 
         prompt = f"""

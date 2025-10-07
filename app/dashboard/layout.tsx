@@ -1,37 +1,36 @@
 "use client"
 
 import { useEffect } from "react"
-import { useAuth } from "@/hooks/useAuth"
+import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { isLoaded, isSignedIn, user } = useUser()
   const router = useRouter()
 
   useEffect(() => {
-    // If loading is finished and there's no user, redirect to the sign-in page.
-    if (!loading && !user) {
-      router.replace("/auth/signin")
+    // If Clerk has loaded and the user is not signed in, redirect to the sign-in page.
+    if (isLoaded && !isSignedIn) {
+      router.replace("/sign-in")
     }
-  }, [user, loading, router])
+  }, [isLoaded, isSignedIn, router])
 
-  // While the authentication state is loading, display a full-screen loader.
-  if (loading) {
+  // While Clerk is loading to check the authentication state, display a full-screen loader.
+  if (!isLoaded) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-700 dark:text-slate-300" />
       </div>
     )
   }
 
-  // If loading is complete but there is no authenticated user,
-  // return null. The useEffect above will handle the redirect.
-  // This prevents the dashboard content from flashing.
-  if (!user) {
-    return null;
+  // If a user is signed in, render the dashboard content.
+  // The useEffect handles the redirect for non-signed-in users, so we can conditionally render children.
+  if (isSignedIn) {
+    return <>{children}</>
   }
-
-  // If a user is logged in, render the dashboard content.
-  return <>{children}</>
+  
+  // If the user is not signed in and Clerk has loaded, this will return null while the redirect occurs.
+  return null
 }

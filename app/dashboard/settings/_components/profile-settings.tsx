@@ -9,6 +9,19 @@ import { useToast } from "@/components/ui/use-toast";
 
 export default function ProfileSettings() {
     const { user } = useAuth();
+    const u = user as any;
+    const getDisplayName = (u: any) => {
+        if (!u) return '';
+        return (
+            u?.user_metadata?.full_name ||
+            u?.unsafeMetadata?.full_name ||
+            (u?.firstName && u?.lastName ? `${u.firstName} ${u.lastName}` : null) ||
+            u?.fullName ||
+            u?.primaryEmailAddress?.emailAddress ||
+            u?.email ||
+            ''
+        );
+    }
     const { toast } = useToast();
 
     const handleUpdateProfile = (e: React.FormEvent) => {
@@ -32,11 +45,11 @@ export default function ProfileSettings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="fullName">Full Name</Label>
-                            <Input id="fullName" defaultValue={user?.user_metadata.full_name || ''} />
+                            <Input id="fullName" defaultValue={getDisplayName(u)} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="email">Email Address</Label>
-                            <Input id="email" type="email" defaultValue={user?.email || ''} disabled />
+                            <Input id="email" type="email" defaultValue={(u?.primaryEmailAddress?.emailAddress || u?.email) || ''} disabled />
                         </div>
                     </div>
 

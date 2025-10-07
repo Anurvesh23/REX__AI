@@ -10,6 +10,27 @@ import { useAuth } from "@/hooks/useAuth"
 export default function ModuleSelector() {
   const { user } = useAuth()
 
+  // Safely derive a display name from various Clerk user shapes. We cast to any
+  // because installed Clerk SDK versions expose different fields (user_metadata,
+  // unsafeMetadata, firstName/lastName, etc.). This helper centralizes fallbacks
+  // so components don't crash when a property is missing.
+  const getDisplayName = (u: any) => {
+    if (!u) return 'User'
+    return (
+      // Prefer `user_metadata.full_name` (older examples)
+      u?.user_metadata?.full_name ||
+      // Clerk newer SDK may expose unsafeMetadata
+      u?.unsafeMetadata?.full_name ||
+      // Try common name fields
+      (u?.firstName && u?.lastName ? `${u.firstName} ${u.lastName}` : null) ||
+      u?.fullName ||
+      // Emails as a last resort
+      (u?.primaryEmailAddress?.emailAddress) ||
+      u?.email ||
+      'User'
+    )
+  }
+
   const modules = [
     {
       id: "ai-duo",
@@ -51,29 +72,6 @@ export default function ModuleSelector() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Brain className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-slate-900 dark:text-white">Rex--AI</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-slate-600 dark:text-slate-400">
-                Welcome back, <span className="font-medium">{user?.user_metadata.full_name || user?.email}</span>
-              </div>
-              <Link href="/dashboard/settings">
-                <Button variant="outline" size="sm">
-                  <SettingsIcon className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
