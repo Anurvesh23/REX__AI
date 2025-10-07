@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security ---
+from clerk_backend_api import Clerk , UnauthenticatedError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -51,40 +52,15 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in the environment for RDS connection.")
 
-# Create a connection pool for the database
+# This global variable will hold the connection pool.
 db_pool = None
-
-async def get_db_connection():
-    if db_pool is None:
-        raise HTTPException(status_code=500, detail="Database connection pool is not initialized.")
-    async with db_pool.acquire() as connection:
-        yield connection
-
-# AWS RDS Database configuration
-import os
-import asyncpg
-
-async def connect_to_db():
-    app.state.db = await asyncpg.create_pool(
-        dsn=f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-    )
-
-async def disconnect_from_db():
-    await app.state.db.close()
-
-@app.on_event('startup')
-async def startup_event():
-    await connect_to_db()
-
-@app.on_event('shutdown')
-async def shutdown_event():
-    await disconnect_from_db()
 
 # --- App & Middleware Setup ---
 app = FastAPI(title="Rex--AI API")
 
 @app.on_event("startup")
 async def startup():
+    """Initializes the database connection pool on application startup."""
     global db_pool
     try:
         db_pool = await asyncpg.create_pool(dsn=DATABASE_URL)
@@ -95,9 +71,17 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
+    """Closes the database connection pool on application shutdown."""
     if db_pool:
         await db_pool.close()
         print("--- Database connection pool closed. ---")
+
+async def get_db_connection():
+    """Dependency to get a database connection from the pool."""
+    if db_pool is None:
+        raise HTTPException(status_code=500, detail="Database connection pool is not initialized.")
+    async with db_pool.acquire() as connection:
+        yield connection
 
 # Security: Rate Limiting
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
@@ -122,20 +106,16 @@ if not os.path.exists("temp_audio"):
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
 # --- Security: Authentication ---
+clerk_client = Clerk()
+
 async def get_current_user_id(authorization: str = Header(None)):
     """Dependency to extract and validate user ID from a Clerk JWT."""
     if authorization is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header is missing")
     
-    # The header should be "Bearer <token>"
     try:
         token = authorization.split(" ")[1]
-        # Dummy token verification; implement proper verification as needed
-        if token:
-            session_claims = {}  
-        else:
-            raise HTTPException(status_code=401, detail='Unauthorized')
-        
+        session_claims = clerk_client.sessions.verify_token(token)
         user_id = session_claims.get("sub")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: user ID is missing")
@@ -272,23 +252,48 @@ class ResumeDataModel(BaseModel):
     projects: List[ProjectModel]
     certifications: List[CertificationModel]
 
+class ResumeSaveData(BaseModel):
+    personalInfo: dict
+    experience: list
+    education: list
+    skills: list
 
 # --- PDF Generation Helpers ---
 def create_analysis_pdf(data):
-    # Dummy implementation; generate a PDF and return its file path
-    return 'pdfs/dummy_analysis.pdf'
-
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="AI Resume Analysis Report", ln=True, align='C')
+    # This is a simplified version. Add more logic to populate the PDF with 'data'.
+    pdf.cell(200, 10, txt=f"Overall Score: {data.get('overall_score', 'N/A')}", ln=True)
+    pdf.cell(200, 10, txt=f"ATS Score: {data.get('ats_score', 'N/A')}", ln=True)
+    pdf.cell(200, 10, txt=f"Job Match: {data.get('job_match', 'N/A')}", ln=True)
+    pdf_output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+    pdf.output(pdf_output_path)
+    return pdf_output_path
 
 def create_optimized_resume_pdf(optimized_text):
-    # Dummy implementation; generate a PDF and return its file path
-    return 'pdfs/dummy_optimized_resume.pdf'
-
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=10)
+    # The multi_cell method is better for long text as it handles line breaks.
+    pdf.multi_cell(0, 5, txt=optimized_text)
+    pdf_output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+    pdf.output(pdf_output_path)
+    return pdf_output_path
 
 def create_test_report_pdf(data):
-    # Dummy implementation; generate a PDF and return its file path
-    return 'pdfs/dummy_test_report.pdf'
-
-
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"{data.job_role} Mock Test Report", ln=True, align='C')
+    # This is a simplified version. Add more logic to populate the PDF with 'data'.
+    pdf.cell(200, 10, txt=f"Overall Score: {data.overall_score}/{data.total_questions}", ln=True)
+    pdf.cell(200, 10, txt=f"Difficulty: {data.difficulty.capitalize()}", ln=True)
+    pdf_output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+    pdf.output(pdf_output_path)
+    return pdf_output_path
+    
 # --- API Endpoints ---
 @app.post("/analyze/")
 @limiter.limit("5 per minute")
@@ -461,18 +466,18 @@ async def evaluate_answers(
     user_id: str = Depends(get_current_user_id)
 ):
     """
-    Evaluates the user's answers and returns an analysis report.
+    Evaluates the user's answers and returns a mock analysis report.
     """
     try:
-        # Mock evaluation logic
         correct_answers = 0
         for answer in data.answers:
+            # This assumes the frontend determines if the answer is correct
             if answer.get("is_correct"):
                 correct_answers += 1
         
         overall_score = (correct_answers / len(data.questions)) * 100 if data.questions else 0
 
-        # Mock category scores and feedback
+        # Mock category scores and feedback for demonstration
         category_scores = {
             "clarity": 80,
             "confidence": 75,
@@ -711,20 +716,15 @@ async def rewrite_description(request: Request, data: RewriteRequest, user_id: s
         print(f"Error during description rewrite for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to rewrite description: {str(e)}")
 
-# This endpoint is a placeholder and not fully implemented
-class ResumeSaveData(BaseModel):
-    personalInfo: dict
-    experience: list
-    education: list
-    skills: list
-
 @app.post("/resume-builder/save")
 async def save_resume_data(data: ResumeSaveData, user_id: str = Depends(get_current_user_id)):
+    # This is a placeholder. You would implement database logic here.
     print(f"Saving resume for user {user_id}:", data.dict())
     return {"message": "Resume saved successfully"}
 
 @app.get("/resume-builder/load")
 async def load_resume_data(user_id: str = Depends(get_current_user_id)):
+    # This is a placeholder. You would implement database logic to fetch user data.
     mock_data = {
         "personalInfo": {"name": "John Doe", "email": "john.doe@example.com"},
         "experience": [],
@@ -762,6 +762,7 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         improved_data = json.loads(json_response_text)
         
+        # Validate the AI's output against the Pydantic model to ensure structural integrity
         validated_data = ResumeDataModel(**improved_data)
         
         return validated_data

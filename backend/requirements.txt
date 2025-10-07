@@ -4,8 +4,8 @@ uvicorn[standard]
 
 # Authentication & Database
 asyncpg
+clerk-backend-api
 pyjwt[cryptography]
-supabase
 
 # AI & Machine Learning
 faiss-cpu
@@ -29,4 +29,3 @@ slowapi
 
 # Utilities
 python-dotenv
-pytesseract
