@@ -4,7 +4,6 @@ uvicorn[standard]
 
 # Authentication & Database
 asyncpg
-clerk-python
 pyjwt[cryptography]
 supabase
 
@@ -30,3 +29,4 @@ slowapi
 
 # Utilities
 python-dotenv
+pytesseract

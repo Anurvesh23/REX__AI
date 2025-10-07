@@ -1,21 +1,19 @@
 // middleware.ts
 
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
-// List your protected routes here
-const isProtectedRoute = createRouteMatcher([
-    '/dashboard(.*)',
-    '/settings(.*)',
-]);
-
-// 1. Make sure the callback function is `async`
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    // 2. Make sure you `await` the auth().protect() call
-    await auth().protect();
+// Custom middleware to bypass Clerk for public routes
+export async function middleware(req: NextRequest, event: NextFetchEvent) {
+  const publicRoutes = ['/', '/sign-in', '/sign-up'];
+  if (publicRoutes.includes(req.nextUrl.pathname)) {
+    return NextResponse.next();
   }
-});
+  // For all other routes, apply Clerk middleware
+  return clerkMiddleware()(req, event);
+}
 
 export const config = {
-  matcher: ["/((?!.+.[w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)',
 };
