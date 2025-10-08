@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn, user } = useUser()
+  const { isLoaded, isSignedIn } = useUser()
   const router = useRouter()
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoaded, isSignedIn, router])
 
-  // While Clerk is loading to check the authentication state, display a full-screen loader.
+  // While Clerk is loading, display a full-screen loader.
   if (!isLoaded) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -25,12 +25,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     )
   }
 
-  // If a user is signed in, render the dashboard content.
-  // The useEffect handles the redirect for non-signed-in users, so we can conditionally render children.
+  // If signed in, render the dashboard content.
   if (isSignedIn) {
     return <>{children}</>
   }
   
-  // If the user is not signed in and Clerk has loaded, this will return null while the redirect occurs.
+  // Return null while the redirect for non-signed-in users occurs.
   return null
 }
