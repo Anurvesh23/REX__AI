@@ -778,3 +778,4 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
     except Exception as e:
         print(f"Error during AI resume improvement for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
+    

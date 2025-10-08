@@ -13,8 +13,9 @@ import Guidelines from "./guidelines"
 import InterviewSession from "./interview-session"
 import FeedbackDisplay from "./feedback-display"
 import { mockAPI } from "@/lib/api"
-import { useAuth } from "@/hooks/useAuth"
+//import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@clerk/nextjs";
 
 interface InterviewSettings {
   num_questions: number;
@@ -27,7 +28,7 @@ interface InterviewSettings {
 type InterviewStep = "selection" | "difficulty" | "generating" | "guidelines" | "interview" | "evaluating" | "results";
 
 export default function MockTestPage() {
-  const { user } = useAuth()
+  const { userId,getToken } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<InterviewStep>("selection")
   const [settings, setSettings] = useState<InterviewSettings>({
@@ -51,7 +52,7 @@ export default function MockTestPage() {
     setCurrentStep("generating");
 
     try {
-      const data = await mockAPI.generateQuestions(newSettings.job_role, newSettings.difficulty, { num_questions: newSettings.num_questions });
+      const data = await mockAPI.generateQuestions(getToken , newSettings.job_role, newSettings.difficulty, { num_questions: newSettings.num_questions });
       if (data && data.length > 0) {
         setQuestions(data);
         setCurrentStep("guidelines");
@@ -76,7 +77,7 @@ export default function MockTestPage() {
   const handleInterviewComplete = async (answers: any[]) => {
     setCurrentStep("evaluating");
     try {
-      const analysis = await mockAPI.evaluateTest(questions, answers);
+      const analysis = await mockAPI.evaluateTest(getToken, questions, answers);
       const correctAnswersCount = answers.filter(a => a.is_correct).length;
       const answeredQuestionsCount = answers.filter(a => a.selected_answer !== null).length;
       const totalQuestions = questions.length;
@@ -105,9 +106,10 @@ export default function MockTestPage() {
       setInterviewResults(results);
       
       // --- Database Storage Enabled ---
-      if (user) {
+      if (userId) { // Check if userId exists
         try {
-          await mockAPI.saveTest({ 
+          await mockAPI.saveTest(getToken, { 
+            user_id: userId, // Pass userId here
             job_role: results.job_role,
             difficulty: results.difficulty,
             overall_score: results.overall_score,
@@ -117,7 +119,7 @@ export default function MockTestPage() {
             feedback: results.feedback,
             suggestions: results.suggestions,
             category_scores: results.category_scores,
-          });
+    });
           toast({
             title: "Success!",
             description: "Your test results have been saved to your profile.",

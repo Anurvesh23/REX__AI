@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { mockAPI } from "@/lib/api"
+import { useAuth } from "@clerk/nextjs";
 
 interface FeedbackDisplayProps {
   results: {
@@ -43,7 +44,7 @@ interface FeedbackDisplayProps {
 export default function FeedbackDisplay({ results, onRestartInterview }: FeedbackDisplayProps) {
   const { category_scores = {}, feedback = "No feedback provided.", suggestions = [] } = results
   const { toast } = useToast();
-
+  const { getToken } = useAuth();
   const getScoreColor = (score: number) => {
     if (score >= 70) return "text-green-600"
     if (score >= 50) return "text-yellow-600"
@@ -71,7 +72,7 @@ export default function FeedbackDisplay({ results, onRestartInterview }: Feedbac
             job_role: results.job_role || "Selected Role",
             difficulty: results.difficulty || "Medium",
         };
-        const blob = await mockAPI.generateTestReport(reportData);
+        const blob = await mockAPI.generateTestReport(getToken, reportData);
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
