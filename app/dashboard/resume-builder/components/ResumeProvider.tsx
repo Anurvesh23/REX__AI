@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '@/components/ui/use-toast';
 import { resumeBuilderAPI } from '@/lib/api';
 import { useAuth } from "@clerk/nextjs";
+
 // --- Type Definitions ---
 export interface PersonalInfo {
     name: string;
@@ -109,7 +110,7 @@ const initialResumeData: ResumeData = {
 
 // --- Context and Provider ---
 const ResumeContext = createContext<ResumeContextType | null>(null);
-const { getToken } = useAuth();
+
 export const useResume = () => {
     const context = useContext(ResumeContext);
     if (!context) {
@@ -119,12 +120,15 @@ export const useResume = () => {
 };
 
 export const ResumeProvider = ({ children }: { children: ReactNode }) => {
+    // CORRECTED: Moved hook calls inside the component body
+    const { getToken } = useAuth();
+    const { toast } = useToast();
+
     const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const downloadHandler = useRef<(() => void) | null>(null);
     const [isDownloadReady, setIsDownloadReady] = useState(false);
     const [isImproving, setIsImproving] = useState(false);
-    const { toast } = useToast();
 
     const improveResume = async () => {
         setIsImproving(true);

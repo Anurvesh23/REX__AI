@@ -111,8 +111,6 @@ if not os.path.exists("temp_audio"):
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
 # --- Security: Authentication ---
-# Initialize the Clerk SDK client. The upstream clerk_backend_api.Clerk expects a
-# bearer_auth argument (the API key/token) rather than `secret_key`.
 clerk_client = Clerk(bearer_auth=clerk_secret_key)
 
 async def get_current_user_id(authorization: str = Header(None)):
@@ -128,8 +126,6 @@ async def get_current_user_id(authorization: str = Header(None)):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: user ID is missing")
         return user_id
     except ClerkError as e:
-        # ClerkError is the base exception type exposed by the clerk package for API/auth related errors.
-        # Map it to a 401 Unauthorized HTTP response for the client.
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
     except (IndexError, Exception) as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token format or other error: {e}")
@@ -273,7 +269,6 @@ def create_analysis_pdf(data):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt="AI Resume Analysis Report", ln=True, align='C')
-    # This is a simplified version. Add more logic to populate the PDF with 'data'.
     pdf.cell(200, 10, txt=f"Overall Score: {data.get('overall_score', 'N/A')}", ln=True)
     pdf.cell(200, 10, txt=f"ATS Score: {data.get('ats_score', 'N/A')}", ln=True)
     pdf.cell(200, 10, txt=f"Job Match: {data.get('job_match', 'N/A')}", ln=True)
@@ -285,7 +280,6 @@ def create_optimized_resume_pdf(optimized_text):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=10)
-    # The multi_cell method is better for long text as it handles line breaks.
     pdf.multi_cell(0, 5, txt=optimized_text)
     pdf_output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
     pdf.output(pdf_output_path)
@@ -296,7 +290,6 @@ def create_test_report_pdf(data):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"{data.job_role} Mock Test Report", ln=True, align='C')
-    # This is a simplified version. Add more logic to populate the PDF with 'data'.
     pdf.cell(200, 10, txt=f"Overall Score: {data.overall_score}/{data.total_questions}", ln=True)
     pdf.cell(200, 10, txt=f"Difficulty: {data.difficulty.capitalize()}", ln=True)
     pdf_output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
@@ -353,9 +346,13 @@ async def analyze_resume(
         """
         response = model.generate_content(analysis_prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
-        analysis_result = json.loads(json_response_text)
         
-        return analysis_result
+        try:
+            analysis_result = json.loads(json_response_text)
+            return analysis_result
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="The AI returned an invalid analysis format. Please try again.")
+
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
@@ -368,10 +365,6 @@ async def analyze_resume(
 @app.post("/generate-optimized-resume/")
 @limiter.limit("5 per minute")
 async def generate_optimized_resume(request: Request, data: OptimizeResumeRequest, user_id: str = Depends(get_current_user_id)):
-    """
-    Takes original resume text and a job description, and returns a fully
-    rewritten, optimized version using a generative AI model.
-    """
     try:
         model = genai.GenerativeModel('gemini-pro')
         prompt = f"""
@@ -400,7 +393,6 @@ async def generate_optimized_resume(request: Request, data: OptimizeResumeReques
         raise HTTPException(status_code=500, detail=f"Failed to generate AI resume: {str(e)}")
 
 async def cover_letter_streamer(resume: str, job_description: str) -> AsyncGenerator[str, None]:
-    """Generator function to stream the cover letter from the AI."""
     try:
         model = genai.GenerativeModel('gemini-pro')
         prompt = f"Generate a professional and compelling cover letter based on the following resume and job description. The cover letter should be 3-4 paragraphs, highlight relevant skills and experience, and show enthusiasm for the role.\n\nRESUME:\n{resume}\n\nJOB DESCRIPTION:\n{job_description}"
@@ -436,9 +428,16 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
         """
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
-        questions = json.loads(json_response_text)
-        for i, q in enumerate(questions): q['id'] = i + 1 # Ensure unique IDs
-        return {"questions": questions}
+        
+        try:
+            questions = json.loads(json_response_text)
+            if not isinstance(questions, list) or len(questions) != data.num_questions:
+                raise ValueError("AI did not return the correct number of questions.")
+            for i, q in enumerate(questions): q['id'] = i + 1
+            return {"questions": questions}
+        except (json.JSONDecodeError, ValueError) as e:
+            raise HTTPException(status_code=500, detail=f"The AI returned an invalid question format: {e}")
+            
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": f"Error generating AI questions: {str(e)}"})
 
@@ -474,19 +473,14 @@ async def evaluate_answers(
     data: EvaluateAnswersRequest,
     user_id: str = Depends(get_current_user_id)
 ):
-    """
-    Evaluates the user's answers and returns a mock analysis report.
-    """
     try:
         correct_answers = 0
         for answer in data.answers:
-            # This assumes the frontend determines if the answer is correct
             if answer.get("is_correct"):
                 correct_answers += 1
         
         overall_score = (correct_answers / len(data.questions)) * 100 if data.questions else 0
 
-        # Mock category scores and feedback for demonstration
         category_scores = {
             "clarity": 80,
             "confidence": 75,
@@ -521,7 +515,7 @@ async def speak_text(request: Request, data: SpeakRequest, user_id: str = Depend
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join("temp_audio", filename)
         tts.save(filepath)
-        audio_url = f"/temp_audio/{filename}" # Relative URL for the client
+        audio_url = f"/temp_audio/{filename}"
         return {"audio_url": audio_url}
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
@@ -727,13 +721,11 @@ async def rewrite_description(request: Request, data: RewriteRequest, user_id: s
 
 @app.post("/resume-builder/save")
 async def save_resume_data(data: ResumeSaveData, user_id: str = Depends(get_current_user_id)):
-    # This is a placeholder. You would implement database logic here.
     print(f"Saving resume for user {user_id}:", data.dict())
     return {"message": "Resume saved successfully"}
 
 @app.get("/resume-builder/load")
 async def load_resume_data(user_id: str = Depends(get_current_user_id)):
-    # This is a placeholder. You would implement database logic to fetch user data.
     mock_data = {
         "personalInfo": {"name": "John Doe", "email": "john.doe@example.com"},
         "experience": [],
@@ -771,11 +763,9 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         improved_data = json.loads(json_response_text)
         
-        # Validate the AI's output against the Pydantic model to ensure structural integrity
         validated_data = ResumeDataModel(**improved_data)
         
         return validated_data
     except Exception as e:
         print(f"Error during AI resume improvement for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
-    
