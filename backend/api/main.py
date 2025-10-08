@@ -297,12 +297,6 @@ def create_test_report_pdf(data):
     return pdf_output_path
     
 # --- API Endpoints ---
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"[{request.method}] {request.url.path}")
-    response = await call_next(request)
-    return response
-
 @app.post("/analyze/")
 @limiter.limit("5 per minute")
 async def analyze_resume(
@@ -315,63 +309,64 @@ async def analyze_resume(
     try:
         model = genai.GenerativeModel('gemini-pro')
         
+        # --- Job Description Validation ---
         validation_prompt = f"""
-        Analyze the following text and determine if it is a valid job description. 
-        A valid job description typically includes sections like "Responsibilities", "Qualifications", "Requirements", or lists skills and experience needed for a role.
-        A URL, random text, or a code repository link is NOT a valid job description.
-        
-        Text to verify: "{jd_text}"
-        
-        Is this a valid job description? Answer with only "yes" or "no".
+        Is the following text a valid job description? Answer with only "yes" or "no".
+        Text: "{jd_text}"
         """
         validation_response = model.generate_content(validation_prompt)
-        
         if "yes" not in validation_response.text.lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid input. Please provide a proper job description, not a URL or other text."
+                detail="Invalid job description provided. Please paste the full job description."
             )
 
+        # --- Resume Processing ---
         temp_path = save_upload_to_temp(file)
         resume_text = extract_text_from_path(temp_path)
         
+        # --- AI Analysis ---
         analysis_prompt = f"""
-        Analyze the provided resume against the job description and return a structured JSON response.
-
-        **Job Description:**
-        {jd_text}
-
-        **Resume:**
-        {resume_text}
-
-        **JSON Output Structure:**
+        Analyze the provided resume against the job description and return ONLY a valid JSON object.
+        Job Description: {jd_text}
+        Resume: {resume_text}
+        
+        JSON Structure:
         {{
-            "overall_score": <number>,
-            "skills_match": <number | null>,
-            "experience_match": <number | null>,
-            "education_match": <number | null>,
-           "job_match": <number>,
-        "ats_score": <number>,
-        "suggestions": [{{ "type": "string", "title": "string", "description": "string", "impact": "string", "category": "string" }}],
-        "keywords_matched": ["string"],
-        "keywords_missing": ["string"],
-        "strengths": ["string"],
-        "weaknesses": ["string"]
+            "overall_score": "<number>",
+            "skills_match": "<number|null>",
+            "experience_match": "<number|null>",
+            "education_match": "<number|null>",
+            "job_match": "<number>",
+            "ats_score": "<number>",
+            "suggestions": [{{ "type": "string", "title": "string", "description": "string", "impact": "string", "category": "string" }}],
+            "keywords_matched": ["string"],
+            "keywords_missing": ["string"],
+            "strengths": ["string"],
+            "weaknesses": ["string"]
         }}
         """
         response = model.generate_content(analysis_prompt)
-        json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         
+        # --- Response Handling ---
         try:
+            # Clean the response to ensure it's valid JSON
+            json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
             analysis_result = json.loads(json_response_text)
             return analysis_result
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="The AI returned an invalid analysis format. Please try again.")
+        except (json.JSONDecodeError, AttributeError) as e:
+            print(f"--- ERROR: AI returned an invalid format for user {user_id}. ---")
+            print(f"Raw AI Response: {response.text}")
+            raise HTTPException(
+                status_code=500, 
+                detail="The AI's response was not in the expected format. Please try again."
+            )
 
     except HTTPException as http_exc:
+        # Re-raise exceptions we've already handled
         raise http_exc
     except Exception as e:
-        print(f"Error during resume analysis for user {user_id}: {e}")
+        print(f"--- UNEXPECTED ERROR in analyze_resume for user {user_id}: {e} ---")
         raise HTTPException(status_code=500, detail="An unexpected error occurred during analysis.")
     finally:
         if temp_path and os.path.exists(temp_path):
@@ -435,12 +430,13 @@ async def generate_cover_letter(request: Request, data: CoverLetterRequest, user
 async def start_skill_test(request: Request, data: StartTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
         model = genai.GenerativeModel('gemini-pro')
+        
         prompt = f"""
-        Generate {data.num_questions} multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' level. Return a valid JSON array.
+        Generate exactly {data.num_questions} multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' level. Return ONLY a valid JSON array of objects.
 
-        **JSON Structure per question:**
+        JSON Structure per question:
         {{
-            "id": <number>,
+            "id": "<number>",
             "question": "string",
             "category": "string",
             "difficulty": "{data.difficulty}",
@@ -449,19 +445,31 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
         }}
         """
         response = model.generate_content(prompt)
-        json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
         
         try:
+            # Clean the response to ensure it's valid JSON
+            json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
             questions = json.loads(json_response_text)
-            if not isinstance(questions, list) or len(questions) != data.num_questions:
-                raise ValueError("AI did not return the correct number of questions.")
-            for i, q in enumerate(questions): q['id'] = i + 1
+            
+            if not isinstance(questions, list) or len(questions) == 0:
+                raise ValueError("AI did not return a valid list of questions.")
+            
+            # Ensure IDs are correctly assigned
+            for i, q in enumerate(questions):
+                q['id'] = i + 1
+            
             return {"questions": questions}
         except (json.JSONDecodeError, ValueError) as e:
-            raise HTTPException(status_code=500, detail=f"The AI returned an invalid question format: {e}")
+            print(f"--- ERROR: AI returned an invalid format for user {user_id}. ---")
+            print(f"Raw AI Response: {response.text}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"The AI returned an invalid question format: {e}"
+            )
             
     except Exception as e:
-        return JSONResponse(status_code=500, content={"message": f"Error generating AI questions: {str(e)}"})
+        print(f"--- UNEXPECTED ERROR in start_skill_test for user {user_id}: {e} ---")
+        return JSONResponse(status_code=500, content={"message": f"An unexpected error occurred: {str(e)}"})
 
 @app.post("/interview/evaluate-test/")
 @limiter.limit("10 per minute")
@@ -791,4 +799,3 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
     except Exception as e:
         print(f"Error during AI resume improvement for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
-        
