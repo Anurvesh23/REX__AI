@@ -1,4 +1,5 @@
 # model_utils.py
+import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 import numpy as np
 import faiss
@@ -23,7 +24,7 @@ def load_generator():
 	# Using a supported Gemini model as a placeholder generator.
 	global _GENERATOR
 	if _GENERATOR is None:
-		_GENERATOR = genai.GenerativeModel('gemini-2.5-flash')
+		_GENERATOR = genai.GenerativeModel('gemini-1.5-flash')
 	return _GENERATOR
 
 def embed_texts(texts, model=None):

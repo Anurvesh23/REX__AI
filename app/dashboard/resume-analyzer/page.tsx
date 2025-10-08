@@ -9,14 +9,14 @@ import Link from "next/link"
 import UploadResume from "./upload-resume"
 import ResultsPanel from "./results-panel"
 import { resumeAPI } from '@/lib/api'
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@clerk/nextjs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
 import { extractTextFromFile } from "@/lib/utils"
 
 export default function ResumeAnalyzerPage() {
-    const { user } = useAuth()
+    const { getToken, userId } = useAuth()
     const { toast } = useToast()
     const [isAnalyzing, setIsAnalyzing] = useState(false)
     const [analysisResult, setAnalysisResult] = useState<any>(null)
@@ -38,13 +38,13 @@ export default function ResumeAnalyzerPage() {
             setResumeData({ resumeFile, jobDescription, resumeText: originalText });
 
             // Step 1: Get the initial analysis scores and data
-            const results = await resumeAPI.analyzeResume(resumeFile, jobDescription);
+            const results = await resumeAPI.analyzeResume(getToken, resumeFile, jobDescription);
             setAnalysisResult(results);
             
             // Step 2: Generate the fully rewritten resume text
             toast({ title: "Generating AI-optimized resume...", description: "This may take a moment." });
             // Assuming `generateOptimizedResume` exists in your API and returns { optimized_resume_text: string }
-            const optimizedResume = await resumeAPI.generateOptimizedResume(originalText, jobDescription);
+            const optimizedResume = await resumeAPI.generateOptimizedResume(getToken, originalText, jobDescription);
             setOptimizedResumeText(optimizedResume.optimized_resume_text);
             
             setCurrentStep("results");
@@ -67,6 +67,7 @@ export default function ResumeAnalyzerPage() {
         setIsCoverLetterOpen(true);
         try {
             await resumeAPI.generateCoverLetter(
+                getToken,
                 resumeData.resumeText,
                 resumeData.jobDescription,
                 (chunk) => {
@@ -91,7 +92,7 @@ export default function ResumeAnalyzerPage() {
         if (!analysisResult) return;
         toast({ title: "Generating PDF Report..." });
         try {
-            const blob = await resumeAPI.generateAnalysisReport(analysisResult);
+            const blob = await resumeAPI.generateAnalysisReport(getToken, analysisResult);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -113,7 +114,7 @@ export default function ResumeAnalyzerPage() {
         if (!optimizedResumeText) return;
         setIsDownloadingAiResume(true);
         try {
-            const blob = await resumeAPI.generateAiResumePdf(optimizedResumeText);
+            const blob = await resumeAPI.generateAiResumePdf(getToken, optimizedResumeText);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -154,7 +155,7 @@ export default function ResumeAnalyzerPage() {
                 job_title: "Resume Analysis" 
             };
 
-            const savedData = await resumeAPI.saveAnalysis(payload);
+            const savedData = await resumeAPI.saveAnalysis(getToken, payload);
             
             toast({
                 title: "Success!",

@@ -21,7 +21,7 @@ import {
   Info,
   Loader2,
 } from "lucide-react"
-import type { ResumeAnalysis } from "@/lib/gemini"
+import type { ResumeAnalysis } from "@/lib/types"
 
 interface ResultsPanelProps {
   analysisResult: ResumeAnalysis
@@ -109,19 +109,22 @@ export default function ResultsPanel({
     })
   }
 
-  // Always include these
-  barChartData.push(
-    {
+  // Conditionally include other metrics
+  if (analysisResult.job_match !== undefined) {
+    barChartData.push({
       label: "Job Match",
       value: analysisResult.job_match,
       color: "#F59E0B", // yellow
-    },
-    {
+    })
+  }
+
+  if (analysisResult.ats_score !== undefined) {
+    barChartData.push({
       label: "ATS Score",
       value: analysisResult.ats_score,
       color: "#EF4444", // red
-    },
-  )
+    })
+  }
 
   // Get sections not mentioned in job description
   const sectionsNotMentioned = []

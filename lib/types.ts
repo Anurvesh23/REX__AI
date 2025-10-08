@@ -25,6 +25,16 @@ export interface ResumeAnalysis {
   keywords_missing: string[];
   strengths: string[];
   weaknesses: string[];
+  skills_match?: number;
+  experience_match?: number;
+  education_match?: number;
+  job_match?: number;
+  ats_score?: number;
+  relevant_sections?: {
+    skills: boolean;
+    experience: boolean;
+    education: boolean;
+  };
 }
 
 /**
