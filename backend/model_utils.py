@@ -24,7 +24,7 @@ def load_generator():
 	# Using a supported Gemini model as a placeholder generator.
 	global _GENERATOR
 	if _GENERATOR is None:
-		_GENERATOR = genai.GenerativeModel('gemini-1.5-flash')
+		_GENERATOR = genai.GenerativeModel('gemini-pro')
 	return _GENERATOR
 
 def embed_texts(texts, model=None):

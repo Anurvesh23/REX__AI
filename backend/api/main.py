@@ -52,9 +52,9 @@ except Exception as e:
 
 
 # --- AWS RDS Configuration ---
-# DATABASE_URL = os.getenv("DATABASE_URL")
-# if not DATABASE_URL:
-#     raise ValueError("DATABASE_URL is not set in the environment for RDS connection.")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in the environment for RDS connection.")
 
 # This global variable will hold the connection pool.
 db_pool = None
