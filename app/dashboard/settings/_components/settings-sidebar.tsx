@@ -73,7 +73,7 @@ export default function SettingsSidebar({ activeTab, setActiveTab }: SettingsSid
         ))}
          <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-red-500 hover:text-red-600 hover:bg-red-50"
+            className="w-full justify-start gap-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
             onClick={() => signOut({ redirectUrl: '/' })}
         >
             <LogOut className="h-4 w-4" />

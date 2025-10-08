@@ -19,14 +19,7 @@ type GetTokenFn = (options?: {
 
 // --- Authentication & Request Helpers ---
 
-/**
- * Retrieves Clerk authentication headers, including the JWT from a specific template.
- * This function is designed to be used by createAuthenticatedRequest.
- * Throws an error if the user is not authenticated.
- * @param getToken - The `getToken` function from Clerk's `useAuth` hook.
- */
 const getClerkAuthHeaders = async (getToken: GetTokenFn) => {
-  // IMPORTANT: Replace 'fastapi-template' with the name of the JWT Template you created in your Clerk Dashboard.
   const token = await getToken({ template: "fastapi-template" });
   if (!token) {
     throw new Error("User is not authenticated. Cannot perform this action.");
@@ -36,13 +29,6 @@ const getClerkAuthHeaders = async (getToken: GetTokenFn) => {
   };
 };
 
-/**
- * Creates a fetch configuration with authentication headers.
- * This function must be called from a Client Component context where Clerk's useAuth hook is available.
- * @param getToken - The `getToken` function from Clerk's `useAuth` hook.
- * @param method - HTTP method (e.g., 'POST').
- * @param body - The request body (can be FormData or a JSON object).
- */
 const createAuthenticatedRequest = async (
   getToken: GetTokenFn,
   method: "POST" | "GET" | "DELETE" | "PUT",
@@ -53,7 +39,6 @@ const createAuthenticatedRequest = async (
     method,
     headers: {
       ...headers,
-      // Don't set Content-Type for FormData; the browser adds it with the correct boundary.
       ...(body instanceof FormData
         ? {}
         : { "Content-Type": "application/json" }),
@@ -65,12 +50,14 @@ const createAuthenticatedRequest = async (
   return config;
 };
 
-// --- Resume Analysis API ---
+// =========================================================================
+// --- API MODULES ---
+// =========================================================================
 
+/**
+ * ## Resume Analysis API
+ */
 export const resumeAPI = {
-  /**
-   * Sends resume and job description to the backend for AI analysis. (Secured)
-   */
   async analyzeResume(
     getToken: GetTokenFn,
     resumeFile: File,
@@ -90,9 +77,6 @@ export const resumeAPI = {
     return response.json();
   },
 
-  /**
-   * Generates a cover letter using the backend AI. (Secured)
-   */
   async generateCoverLetter(
     getToken: GetTokenFn,
     resumeText: string,
@@ -112,23 +96,16 @@ export const resumeAPI = {
     }
 
     const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("Failed to read response stream.");
-    }
+    if (!reader) throw new Error("Failed to read response stream.");
 
     const decoder = new TextDecoder();
     while (true) {
       const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
+      if (done) break;
       onChunk(decoder.decode(value, { stream: true }));
     }
   },
 
-  /**
-   * Sends original resume and JD to the backend for a full AI rewrite. (Secured)
-   */
   async generateOptimizedResume(
     getToken: GetTokenFn,
     resumeText: string,
@@ -151,9 +128,6 @@ export const resumeAPI = {
     return response.json();
   },
 
-  /**
-   * Saves the result of a resume analysis via the backend. (Secured)
-   */
   async saveAnalysis(getToken: GetTokenFn, analysisData: Partial<Resume>) {
     const { user_id, ...payload } = analysisData;
     const config = await createAuthenticatedRequest(getToken, "POST", payload);
@@ -163,9 +137,6 @@ export const resumeAPI = {
     return response.json();
   },
 
-  /**
-   * Generates a PDF report for a resume analysis from the backend. (Secured)
-   */
   async generateAnalysisReport(
     getToken: GetTokenFn,
     reportData: any
@@ -186,9 +157,6 @@ export const resumeAPI = {
     return response.blob();
   },
 
-  /**
-   * Generates a PDF of the AI-optimized resume from the backend. (Secured)
-   */
   async generateAiResumePdf(
     getToken: GetTokenFn,
     optimizedResumeText: string
@@ -206,9 +174,6 @@ export const resumeAPI = {
     return response.blob();
   },
 
-  /**
-   * Retrieves all past resume analyses for a user by calling the backend API.
-   */
   async getUserResumes(
     getToken: GetTokenFn,
     userId: string
@@ -222,9 +187,6 @@ export const resumeAPI = {
     return response.json();
   },
 
-  /**
-   * Deletes a specific resume analysis via the backend API.
-   */
   async deleteResume(getToken: GetTokenFn, resumeId: string) {
     const config = await createAuthenticatedRequest(getToken, "DELETE");
     const response = await fetch(`${API_BASE_URL}/resumes/${resumeId}`, config);
@@ -232,12 +194,11 @@ export const resumeAPI = {
   },
 };
 
-// --- Resume Builder API ---
 
+/**
+ * ## Resume Builder API
+ */
 export const resumeBuilderAPI = {
-  /**
-   * Sends an experience description to the backend for an AI rewrite. (Secured)
-   */
   async rewriteDescription(
     getToken: GetTokenFn,
     title: string,
@@ -257,9 +218,6 @@ export const resumeBuilderAPI = {
     return response.json();
   },
 
-  /**
-   * Sends the entire resume data object for AI improvement. (Secured)
-   */
   async improveResume(getToken: GetTokenFn, resumeData: any): Promise<any> {
     const config = await createAuthenticatedRequest(
       getToken,
@@ -279,12 +237,10 @@ export const resumeBuilderAPI = {
   },
 };
 
-// --- Mock Interview & Mock Test API ---
-
+/**
+ * ## Mock Interview & Test API
+ */
 export const mockAPI = {
-  /**
-   * Generates mock test questions from the backend. (Secured)
-   */
   async generateQuestions(
     getToken: GetTokenFn,
     jobRole: string,
@@ -308,9 +264,6 @@ export const mockAPI = {
     return data.questions;
   },
 
-  /**
-   * Submits a completed mock test to the backend for evaluation. (Secured)
-   */
   async evaluateTest(getToken: GetTokenFn, questions: any[], answers: any[]) {
     const payload = { questions, answers };
     const config = await createAuthenticatedRequest(getToken, "POST", payload);
@@ -326,9 +279,6 @@ export const mockAPI = {
     return response.json();
   },
 
-  /**
-   * Submits answers from a video interview for evaluation. (Secured)
-   */
   async evaluateAnswers(
     getToken: GetTokenFn,
     payload: { questions: any[]; answers: any[] }
@@ -346,9 +296,6 @@ export const mockAPI = {
     return response.json();
   },
 
-  /**
-   * Generates a PDF report for a mock test from the backend. (Secured)
-   */
   async generateTestReport(
     getToken: GetTokenFn,
     reportData: any
@@ -369,9 +316,6 @@ export const mockAPI = {
     return response.blob();
   },
 
-  /**
-   * Saves mock test results via the backend. (Secured)
-   */
   async saveTest(getToken: GetTokenFn, testData: Partial<MockTest>) {
     const { user_id, ...payload } = testData;
     const config = await createAuthenticatedRequest(getToken, "POST", payload);
@@ -384,9 +328,6 @@ export const mockAPI = {
     return response.json();
   },
 
-  /**
-   * Saves interview results via the backend. (Secured)
-   */
   async saveInterview(
     getToken: GetTokenFn,
     interviewData: Partial<MockInterview>
@@ -402,9 +343,6 @@ export const mockAPI = {
     return response.json();
   },
 
-  /**
-   * Retrieves all past mock tests for a user from the backend API.
-   */
   async getUserMockTests(
     getToken: GetTokenFn,
     userId: string
@@ -418,9 +356,6 @@ export const mockAPI = {
     return response.json();
   },
 
-  /**
-   * Retrieves all past interviews for a user from the backend API.
-   */
   async getUserInterviews(
     getToken: GetTokenFn,
     userId: string
@@ -434,9 +369,6 @@ export const mockAPI = {
     return response.json();
   },
 
-  /**
-   * Generates audio from text using the backend. (Secured)
-   */
   async speak(getToken: GetTokenFn, text: string) {
     const payload = { text };
     const config = await createAuthenticatedRequest(getToken, "POST", payload);
@@ -450,12 +382,11 @@ export const mockAPI = {
   },
 };
 
-// --- Job Management API ---
 
+/**
+ * ## Job Management API
+ */
 export const jobAPI = {
-  /**
-   * Saves a job listing via the backend. (Secured)
-   */
   async saveJob(
     getToken: GetTokenFn,
     jobData: Partial<SavedJob>
@@ -471,9 +402,6 @@ export const jobAPI = {
     return response.json();
   },
 
-  /**
-   * Retrieves all saved jobs for a user from the backend API.
-   */
   async getSavedJobs(
     getToken: GetTokenFn,
     userId: string
@@ -487,9 +415,6 @@ export const jobAPI = {
     return response.json();
   },
 
-  /**
-   * Updates the status of a saved job via the backend API.
-   */
   async updateJobStatus(
     getToken: GetTokenFn,
     jobId: string,
@@ -503,9 +428,6 @@ export const jobAPI = {
     return response.json();
   },
 
-  /**
-   * Deletes a saved job via the backend API.
-   */
   async deleteJob(getToken: GetTokenFn, jobId: string) {
     const config = await createAuthenticatedRequest(getToken, "DELETE");
     const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, config);
