@@ -19,8 +19,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-# --- Security ---
-from clerk_backend_api import Clerk, ClerkError
+# --- Security (UPDATED CLERK IMPORT) ---
+from clerk_sdk import Clerk
+from clerk_sdk.errors import ClerkAPIException
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -37,8 +38,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import save_upload_to_temp, extract_text_from_path
 
 # --- Environment & AI Configuration ---
+# Look for the .env.local file in the project root directory
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env.local')
 load_dotenv(dotenv_path=dotenv_path)
+
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
     clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
@@ -57,7 +60,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in the environment for RDS connection.")
 
-# This global variable will hold the connection pool.
 db_pool = None
 
 # --- App & Middleware Setup ---
@@ -65,7 +67,6 @@ app = FastAPI(title="Rex--AI API")
 
 @app.on_event("startup")
 async def startup():
-    """Initializes the database connection pool on application startup."""
     global db_pool
     try:
         db_pool = await asyncpg.create_pool(dsn=DATABASE_URL)
@@ -77,13 +78,11 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    """Closes the database connection pool on application shutdown."""
     if db_pool:
         await db_pool.close()
         print("--- Database connection pool closed. ---")
 
 async def get_db_connection():
-    """Dependency to get a database connection from the pool."""
     if db_pool is None:
         raise HTTPException(status_code=500, detail="Database connection pool is not initialized.")
     async with db_pool.acquire() as connection:
@@ -111,28 +110,27 @@ if not os.path.exists("temp_audio"):
     os.makedirs("temp_audio")
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
-# --- Security: Authentication ---
-clerk_client = Clerk(bearer_auth=clerk_secret_key)
+# --- Security: Authentication (UPDATED INITIALIZATION) ---
+clerk_client = Clerk(secret_key=clerk_secret_key)
 
+# --- CORRECTED AUTHENTICATION DEPENDENCY ---
 async def get_current_user_id(authorization: str = Header(None)):
     """Dependency to extract and validate user ID from a Clerk JWT."""
     if authorization is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header is missing")
+        raise HTTPException(status_code=401, detail="Authorization header is missing")
     
     try:
         token = authorization.split(" ")[1]
-        # The verify_token method is on the client now, not sessions
-        session_claims = clerk_client.sessions.verify_token(token)
+        session_claims = clerk_client.verify_token(token)
         user_id = session_claims.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: user ID is missing")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token: User ID missing")
         return user_id
+    except ClerkAPIException as e:
+        raise HTTPException(status_code=401, detail=f"Clerk authentication error: {e}")
     except Exception as e:
-        # Catch a general exception and then raise the appropriate HTTP exception
-        if "Clerk" in str(e): # A simple way to check if it's a Clerk-related error
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token format or other error: {e}")
-    
+        raise HTTPException(status_code=401, detail=f"Invalid token format: {e}")
+
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_CONTENT_TYPES = [

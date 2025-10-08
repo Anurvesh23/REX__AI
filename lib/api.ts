@@ -240,7 +240,7 @@ export const resumeBuilderAPI = {
 /**
  * ## Mock Interview & Test API
  */
-export const mockAPI = {
+  export const mockAPI = {
   async generateQuestions(
     getToken: GetTokenFn,
     jobRole: string,
@@ -252,6 +252,7 @@ export const mockAPI = {
       difficulty: difficulty,
       num_questions: settings.num_questions,
     };
+    // Ensure this is a POST request
     const config = await createAuthenticatedRequest(getToken, "POST", payload);
     const response = await fetch(`${API_BASE_URL}/interview/start/`, config);
 
@@ -263,6 +264,7 @@ export const mockAPI = {
     }
     return data.questions;
   },
+
 
   async evaluateTest(getToken: GetTokenFn, questions: any[], answers: any[]) {
     const payload = { questions, answers };

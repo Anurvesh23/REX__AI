@@ -4,7 +4,7 @@ uvicorn[standard]
 
 # Authentication & Database
 asyncpg
-clerk-backend-api
+clerk-sdk-python
 pyjwt[cryptography]
 
 # AI & Machine Learning
