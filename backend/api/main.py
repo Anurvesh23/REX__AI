@@ -37,7 +37,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import save_upload_to_temp, extract_text_from_path
 
 # --- Environment & AI Configuration ---
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env.local')
+load_dotenv(dotenv_path=dotenv_path)
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
     clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
@@ -120,16 +121,18 @@ async def get_current_user_id(authorization: str = Header(None)):
     
     try:
         token = authorization.split(" ")[1]
+        # The verify_token method is on the client now, not sessions
         session_claims = clerk_client.sessions.verify_token(token)
         user_id = session_claims.get("sub")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: user ID is missing")
         return user_id
-    except ClerkError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
-    except (IndexError, Exception) as e:
+    except Exception as e:
+        # Catch a general exception and then raise the appropriate HTTP exception
+        if "Clerk" in str(e): # A simple way to check if it's a Clerk-related error
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token format or other error: {e}")
-
+    
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_CONTENT_TYPES = [
@@ -297,6 +300,10 @@ def create_test_report_pdf(data):
     return pdf_output_path
     
 # --- API Endpoints ---
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Rex--AI API!"}
+
 @app.post("/analyze/")
 @limiter.limit("5 per minute")
 async def analyze_resume(
