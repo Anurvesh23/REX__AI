@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@clerk/nextjs";
 import { mockAPI } from "@/lib/api";
 import type { MockInterview, MockTest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,8 +11,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
+
 export default function MockHistory() {
-    const { user } = useAuth();
+    const { getToken, userId } = useAuth();
     const { toast } = useToast();
     const [interviews, setInterviews] = useState<MockInterview[]>([]);
     const [tests, setTests] = useState<MockTest[]>([]);
@@ -23,11 +24,11 @@ export default function MockHistory() {
 
     useEffect(() => {
         const fetchHistory = async () => {
-            if (user) {
+            if (userId) {
                 try {
                     const [interviewData, testData] = await Promise.all([
-                        mockAPI.getUserInterviews(user.id),
-                        mockAPI.getUserMockTests(user.id)
+                        mockAPI.getUserInterviews(getToken, userId),
+                        mockAPI.getUserMockTests(getToken, userId)
                     ]);
                     setInterviews(interviewData);
                     setTests(testData);
@@ -44,7 +45,7 @@ export default function MockHistory() {
             }
         };
         fetchHistory();
-    }, [user, toast]);
+    }, [userId, getToken, toast]);
 
     const handleViewDetails = (item: MockInterview | MockTest, type: 'interview' | 'test') => {
         setSelectedItem(item);

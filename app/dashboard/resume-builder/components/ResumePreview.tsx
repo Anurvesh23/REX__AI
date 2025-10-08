@@ -5,12 +5,13 @@ import { useResume } from './ResumeProvider';
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from '@/components/ui/use-toast';
 import { resumeAPI } from '@/lib/api';
+import { useAuth } from "@clerk/nextjs";
 
 export const ResumePreview = () => {
     const { selectedTemplate, registerDownload } = useResume();
     const { toast } = useToast();
     const resumePreviewRef = useRef<HTMLDivElement>(null);
-
+    const { getToken } = useAuth();
     // Using useCallback to ensure the function reference is stable
     const handleDownload = useCallback(async () => {
         if (!resumePreviewRef.current) {
@@ -21,7 +22,7 @@ export const ResumePreview = () => {
 
         try {
             const resumeHtmlContent = resumePreviewRef.current.innerHTML;
-            const blob = await resumeAPI.generateAiResumePdf(resumeHtmlContent);
+            const blob = await resumeAPI.generateAiResumePdf(getToken, resumeHtmlContent);
 
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");

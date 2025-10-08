@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, ReactNode, useRef } from 'r
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '@/components/ui/use-toast';
 import { resumeBuilderAPI } from '@/lib/api';
-
+import { useAuth } from "@clerk/nextjs";
 // --- Type Definitions ---
 export interface PersonalInfo {
     name: string;
@@ -109,7 +109,7 @@ const initialResumeData: ResumeData = {
 
 // --- Context and Provider ---
 const ResumeContext = createContext<ResumeContextType | null>(null);
-
+const { getToken } = useAuth();
 export const useResume = () => {
     const context = useContext(ResumeContext);
     if (!context) {
@@ -130,7 +130,7 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         setIsImproving(true);
         toast({ title: "AI Assistant is rewriting your resume...", description: "This may take a moment." });
         try {
-            const improvedData = await resumeBuilderAPI.improveResume(resumeData);
+            const improvedData = await resumeBuilderAPI.improveResume(getToken, resumeData);
             setResumeData(improvedData);
             toast({ title: "Success!", description: "Your resume has been improved by AI." });
         } catch (error) {

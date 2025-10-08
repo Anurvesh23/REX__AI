@@ -13,6 +13,7 @@ import { Trash2, PlusCircle, Wand2, Loader2 } from "lucide-react";
 import type { Experience, Education, Skill, Project, Certification } from './ResumeProvider';
 import { resumeBuilderAPI } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from "@clerk/nextjs";
 
 interface AiAssistantProps {
     section: 'experience';
@@ -23,7 +24,7 @@ interface AiAssistantProps {
 const AiAssistantButton = ({ section, item, onUpdate }: AiAssistantProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
-
+    const { getToken } = useAuth();
     const handleRewrite = async () => {
         if (!item.description) {
             toast({
@@ -36,7 +37,7 @@ const AiAssistantButton = ({ section, item, onUpdate }: AiAssistantProps) => {
 
         setIsLoading(true);
         try {
-            const result = await resumeBuilderAPI.rewriteDescription(item.title, item.description);
+            const result = await resumeBuilderAPI.rewriteDescription(getToken, item.title, item.description);
             onUpdate(result.rewritten_description);
             toast({
                 title: "Success!",

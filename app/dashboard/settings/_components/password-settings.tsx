@@ -6,41 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
 
 export default function PasswordSettings() {
     const { toast } = useToast();
 
     const handleChangePassword = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        // Supabase password change logic would go here.
-        // const { error } = await supabase.auth.updateUser({ password: newPassword });
-        toast({
-            title: "Password Updated",
-            description: "Your password has been changed successfully.",
-        });
-        e.currentTarget.reset();
-    };
+    e.preventDefault();
+    toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully.",
+    });
+    e.currentTarget.reset();
+};
 
-    const handleResetPassword = async () => {
-        const email = supabase.auth.getUser()?.then(userResponse => {
-            if (userResponse.data.user?.email) {
-                 supabase.auth.resetPasswordForEmail(userResponse.data.user.email, {
-                    redirectTo: `${window.location.origin}/auth/update-password`,
-                });
-                toast({
-                    title: "Password Reset Email Sent",
-                    description: "Please check your inbox for instructions to reset your password.",
-                });
-            } else {
-                 toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Could not find user email to send reset link.",
-                });
-            }
-        });
-    };
+    
 
     return (
         <Card>
@@ -74,7 +53,7 @@ export default function PasswordSettings() {
                     <p className="text-sm text-muted-foreground mb-4">
                         We'll send a password reset link to your email address.
                     </p>
-                    <Button variant="outline" onClick={handleResetPassword}>Send Reset Link</Button>
+                    <Button variant="outline">Send Reset Link</Button>
                 </div>
             </CardContent>
         </Card>
