@@ -297,6 +297,12 @@ def create_test_report_pdf(data):
     return pdf_output_path
     
 # --- API Endpoints ---
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[{request.method}] {request.url.path}")
+    response = await call_next(request)
+    return response
+
 @app.post("/analyze/")
 @limiter.limit("5 per minute")
 async def analyze_resume(
@@ -330,19 +336,28 @@ async def analyze_resume(
         resume_text = extract_text_from_path(temp_path)
         
         analysis_prompt = f"""
-        **Objective:** Analyze the provided resume against the job description with high accuracy and provide a detailed, structured JSON response.
-        **Context:**
-         - **Job Description:** {jd_text}
-         - **Resume:** {resume_text}
-        **Required JSON Output Structure (Do not include any text or markdown formatting outside of this JSON object):**
-        ```json
+        Analyze the provided resume against the job description and return a structured JSON response.
+
+        **Job Description:**
+        {jd_text}
+
+        **Resume:**
+        {resume_text}
+
+        **JSON Output Structure:**
         {{
-         "overall_score": number, "skills_match": number | null, "experience_match": number | null, "education_match": number | null, "job_match": number, "ats_score": number,
-         "relevant_sections": {{"skills": boolean, "experience": boolean, "education": boolean, "certifications": boolean}},
-         "suggestions": [{{"type": "improvement" | "warning" | "success", "title": "string", "description": "string", "impact": "High" | "Medium" | "Low", "category": "Content" | "Formatting" | "Keywords" | "Experience"}}],
-         "keywords_matched": ["string"], "keywords_missing": ["string"], "strengths": ["string"], "weaknesses": ["string"]
+            "overall_score": <number>,
+            "skills_match": <number | null>,
+            "experience_match": <number | null>,
+            "education_match": <number | null>,
+           "job_match": <number>,
+        "ats_score": <number>,
+        "suggestions": [{{ "type": "string", "title": "string", "description": "string", "impact": "string", "category": "string" }}],
+        "keywords_matched": ["string"],
+        "keywords_missing": ["string"],
+        "strengths": ["string"],
+        "weaknesses": ["string"]
         }}
-        ```
         """
         response = model.generate_content(analysis_prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
@@ -420,11 +435,18 @@ async def generate_cover_letter(request: Request, data: CoverLetterRequest, user
 async def start_skill_test(request: Request, data: StartTestRequest, user_id: str = Depends(get_current_user_id)):
     try:
         model = genai.GenerativeModel('gemini-pro')
-        prompt = f"""Generate {data.num_questions} unique, high-quality, and tricky multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' difficulty level. Return ONLY a valid JSON array of objects.
-        **JSON Object Structure (per question):**
-        ```json
-        {{ "id": "A unique integer", "question": "The question text.", "category": "technical or behavioral", "difficulty": "{data.difficulty}", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": "The exact string of the correct option." }}
-        ```
+        prompt = f"""
+        Generate {data.num_questions} multiple-choice questions for a '{data.role}' position at a '{data.difficulty}' level. Return a valid JSON array.
+
+        **JSON Structure per question:**
+        {{
+            "id": <number>,
+            "question": "string",
+            "category": "string",
+            "difficulty": "{data.difficulty}",
+            "options": ["string", "string", "string", "string"],
+            "correctAnswer": "string"
+        }}
         """
         response = model.generate_content(prompt)
         json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
@@ -769,3 +791,4 @@ async def improve_resume_with_ai(request: Request, data: ResumeDataModel, user_i
     except Exception as e:
         print(f"Error during AI resume improvement for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to improve resume with AI: {str(e)}")
+        
