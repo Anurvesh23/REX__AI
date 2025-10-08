@@ -3,34 +3,10 @@
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, MessageSquare, GraduationCap, Search, ArrowRight, Brain, Star, SettingsIcon } from "lucide-react"
+import { ArrowRight, Star, GraduationCap, MessageSquare, Search } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/hooks/useAuth"
 
 export default function ModuleSelector() {
-  const { user } = useAuth()
-
-  // Safely derive a display name from various Clerk user shapes. We cast to any
-  // because installed Clerk SDK versions expose different fields (user_metadata,
-  // unsafeMetadata, firstName/lastName, etc.). This helper centralizes fallbacks
-  // so components don't crash when a property is missing.
-  const getDisplayName = (u: any) => {
-    if (!u) return 'User'
-    return (
-      // Prefer `user_metadata.full_name` (older examples)
-      u?.user_metadata?.full_name ||
-      // Clerk newer SDK may expose unsafeMetadata
-      u?.unsafeMetadata?.full_name ||
-      // Try common name fields
-      (u?.firstName && u?.lastName ? `${u.firstName} ${u.lastName}` : null) ||
-      u?.fullName ||
-      // Emails as a last resort
-      (u?.primaryEmailAddress?.emailAddress) ||
-      u?.email ||
-      'User'
-    )
-  }
-
   const modules = [
     {
       id: "ai-duo",
@@ -68,12 +44,12 @@ export default function ModuleSelector() {
       features: ["Personalized Matches", "Application Tracking", "Job Alerts"],
       href: "/dashboard/job-search",
     },
-  ]
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pt-16">
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -82,8 +58,7 @@ export default function ModuleSelector() {
         >
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Choose Your AI Career Tool</h1>
           <p className="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
-            Select the module that best fits your current career needs. Each tool is powered by advanced AI to give you
-            personalized insights.
+            Select the module that best fits your current career needs. Each tool is powered by advanced AI to give you personalized insights.
           </p>
         </motion.div>
 
@@ -126,7 +101,7 @@ export default function ModuleSelector() {
             </motion.div>
           ))}
         </div>
-      </div>
+      </main>
     </div>
-  )
+  );
 }
