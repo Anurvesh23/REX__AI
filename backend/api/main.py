@@ -1,3 +1,5 @@
+# backend/api/main.py
+
 # --- Core Imports ---
 import tempfile
 import sys
@@ -13,14 +15,14 @@ from dotenv import load_dotenv
 
 # --- Web Framework (FastAPI) ---
 from fastapi import (
-    FastAPI, UploadFile, File, Form, Body, Depends, HTTPException, Header, status, Request
+    FastAPI, UploadFile, File, Form, Body, Depends, HTTPException, status, Request
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-# --- Security (UPDATED CLERK IMPORT) ---
-from clerk_backend_api import Clerk
+# --- Security (FINAL CORRECTED CLERK IMPORT) ---
+from clerk_fastapi import ClerkMiddleware, get_session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -37,22 +39,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import save_upload_to_temp, extract_text_from_path
 
 # --- Environment & AI Configuration ---
-# Look for the .env.local file in the project root directory
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env.local')
 load_dotenv(dotenv_path=dotenv_path)
 
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
-    clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables.")
-    if not clerk_secret_key:
-        raise ValueError("CLERK_SECRET_KEY not found in environment variables.")
     genai.configure(api_key=api_key)
     print("--- Gemini AI configured successfully. ---")
 except Exception as e:
     print(f"FATAL: Error configuring services. Please check your environment variables. Error: {e}")
-
 
 # --- AWS RDS Configuration ---
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -62,7 +59,11 @@ if not DATABASE_URL:
 db_pool = None
 
 # --- App & Middleware Setup ---
-app = FastAPI(title="Rex--AI API")
+# CORRECT: Initialize FastAPI and add ClerkMiddleware to handle auth automatically
+app = FastAPI(
+    title="Rex--AI API",
+)
+app.add_middleware(ClerkMiddleware)
 
 @app.on_event("startup")
 async def startup():
@@ -73,7 +74,6 @@ async def startup():
     except Exception as e:
         print(f"FATAL: Could not connect to the database. Error: {e}")
         db_pool = None
-
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -109,40 +109,16 @@ if not os.path.exists("temp_audio"):
     os.makedirs("temp_audio")
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
-# --- Security: Authentication (UPDATED INITIALIZATION) ---
-clerk_client = Clerk(bearer_auth=clerk_secret_key)
-
-# --- CORRECTED AUTHENTICATION DEPENDENCY ---
-# backend/api/main.py
-
 # --- FINAL CORRECTED AUTHENTICATION DEPENDENCY ---
-async def get_current_user_id(authorization: str = Header(None)):
-    """Dependency to extract and validate user ID from a Clerk JWT."""
-    if authorization is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header is missing"
-        )
-
-    try:
-        token = authorization.split(" ")[1]
-        # CORRECTED: Use the verify_token method from the sessions API
-        session_claims = clerk_client.sessions.verify_token(token=token)
-
-        user_id = session_claims.get("sub")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: User ID ('sub') is missing"
-            )
-        return user_id
-    except Exception as e:
-        # Log the actual error from the Clerk SDK for debugging
-        print(f"Clerk Authentication Error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token or authentication error: {e}"
-        )
+def get_current_user_id(session: Dict[str, Any] = Depends(get_session)):
+    """Dependency to get user ID from the Clerk session provided by the middleware."""
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = session.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found in session")
+    return user_id
+    
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_CONTENT_TYPES = [
@@ -367,7 +343,6 @@ async def analyze_resume(
         
         # --- Response Handling ---
         try:
-            # Clean the response to ensure it's valid JSON
             json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
             analysis_result = json.loads(json_response_text)
             return analysis_result
@@ -380,7 +355,6 @@ async def analyze_resume(
             )
 
     except HTTPException as http_exc:
-        # Re-raise exceptions we've already handled
         raise http_exc
     except Exception as e:
         print(f"--- UNEXPECTED ERROR in analyze_resume for user {user_id}: {e} ---")
@@ -464,14 +438,12 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
         response = model.generate_content(prompt)
         
         try:
-            # Clean the response to ensure it's valid JSON
             json_response_text = response.text.strip().lstrip("```json").rstrip("```").strip()
             questions = json.loads(json_response_text)
             
             if not isinstance(questions, list) or len(questions) == 0:
                 raise ValueError("AI did not return a valid list of questions.")
             
-            # Ensure IDs are correctly assigned
             for i, q in enumerate(questions):
                 q['id'] = i + 1
             

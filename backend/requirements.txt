@@ -1,31 +1,20 @@
-# Core Web Framework
 fastapi
 uvicorn[standard]
-
-# Authentication & Database
 asyncpg
-clerk-sdk-python
+clerk-fastapi
 pyjwt[cryptography]
-
-# AI & Machine Learning
 faiss-cpu
 google-generativeai
 gTTS
 numpy
 sentence-transformers
 spacy
-
-# Document & File Processing
 docx2txt
 fpdf
 Pillow
 PyMuPDF
 python-multipart
 weasyprint
-
-# Security
 pip-audit
 slowapi
-
-# Utilities
 python-dotenv
