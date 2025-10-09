@@ -117,20 +117,22 @@ clerk_client = Clerk(secret_key=clerk_secret_key)
 async def get_current_user_id(authorization: str = Header(None)):
     """Dependency to extract and validate user ID from a Clerk JWT."""
     if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header is missing")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header is missing")
     
     try:
         token = authorization.split(" ")[1]
-        session_claims = clerk_client.verify_token(token)
+        # The verify_token method is on the client now, not sessions
+        session_claims = clerk_client.sessions.verify_token(token)
         user_id = session_claims.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token: User ID missing")
+        if user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: user ID is missing")
         return user_id
-    except ClerkAPIException as e:
-        raise HTTPException(status_code=401, detail=f"Clerk authentication error: {e}")
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token format: {e}")
-
+        # Catch a general exception and then raise the appropriate HTTP exception
+        if "Clerk" in str(e): # A simple way to check if it's a Clerk-related error
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token format or other error: {e}")
+    
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_CONTENT_TYPES = [
