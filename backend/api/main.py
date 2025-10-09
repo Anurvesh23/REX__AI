@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security (FINAL CORRECTED CLERK IMPORT) ---
-from clerk_fastapi import ClerkMiddleware, get_session
+from clerk_backend_api import ClerkMiddleware, get_session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -143,12 +143,35 @@ def validate_file(file: UploadFile):
     return file
 
 # --- Pydantic Models ---
-class SpeakRequest(BaseModel): text: str
-class CoverLetterRequest(BaseModel): resume: str; job_description: str
-class StartTestRequest(BaseModel): role: str; difficulty: str = "medium"; num_questions: int = 10
-class AiResumePdfRequest(BaseModel): optimized_resume_text: str
-class EvaluateTestRequest(BaseModel): questions: List[Dict[str, Any]]; answers: List[Dict[str, Any]]
-class TestReportRequest(BaseModel): job_role: str; difficulty: str; overall_score: int; total_questions: int; correct_answers: int; duration_minutes: int; answers: List[Dict[str, Any]]; questions: List[Dict[str, Any]]
+class SpeakRequest(BaseModel):
+    text: str
+
+class CoverLetterRequest(BaseModel):
+    resume: str
+    job_description: str
+
+class StartTestRequest(BaseModel):
+    role: str
+    difficulty: str = "medium"
+    num_questions: int = 10
+
+class AiResumePdfRequest(BaseModel):
+    optimized_resume_text: str
+
+class EvaluateTestRequest(BaseModel):
+    questions: List[Dict[str, Any]]
+    answers: List[Dict[str, Any]]
+
+class TestReportRequest(BaseModel):
+    job_role: str
+    difficulty: str
+    overall_score: int
+    total_questions: int
+    correct_answers: int
+    duration_minutes: int
+    answers: List[Dict[str, Any]]
+    questions: List[Dict[str, Any]]
+
 class SaveAnalysisRequest(BaseModel):
     overall_score: int
     job_match: int
@@ -174,9 +197,11 @@ class AnalysisReportPDFRequest(BaseModel):
     skills_match: Optional[int] = None
     experience_match: Optional[int] = None
     education_match: Optional[int] = None
+
 class OptimizeResumeRequest(BaseModel):
     resume_text: str
     job_description: str
+
 class SaveInterviewRequest(BaseModel):
     job_role: str
     difficulty: str
@@ -198,6 +223,7 @@ class SaveTestRequest(BaseModel):
     feedback: Optional[str] = None
     suggestions: Optional[List[str]] = None
     category_scores: Optional[Dict[str, int]] = None
+
 class SaveJobRequest(BaseModel):
     job_title: str
     company_name: str
@@ -220,22 +246,46 @@ class RewriteRequest(BaseModel):
     description: str
 
 class PersonalInfoModel(BaseModel):
-    name: str; email: str; phone: str; location: str; website: str; linkedin: str; github: str
+    name: str
+    email: str
+    phone: str
+    location: str
+    website: str
+    linkedin: str
+    github: str
 
 class ExperienceModel(BaseModel):
-    id: str; title: str; company: str; location: str; startDate: str; endDate: str; description: str
+    id: str
+    title: str
+    company: str
+    location: str
+    startDate: str
+    endDate: str
+    description: str
 
 class EducationModel(BaseModel):
-    id: str; school: str; location: str; degree: str; field: str; graduationDate: str
+    id: str
+    school: str
+    location: str
+    degree: str
+    field: str
+    graduationDate: str
 
 class SkillModel(BaseModel):
-    id: str; name: str
+    id: str
+    name: str
 
 class ProjectModel(BaseModel):
-    id: str; name: str; description: str; url: str
+    id: str
+    name: str
+    description: str
+    url: str
 
 class CertificationModel(BaseModel):
-    id: str; name: str; issuer: str; date: str
+    id: str
+    name: str
+    issuer: str
+    date: str
 
 class ResumeDataModel(BaseModel):
     personalInfo: PersonalInfoModel
