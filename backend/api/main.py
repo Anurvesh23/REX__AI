@@ -20,8 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security (UPDATED CLERK IMPORT) ---
-from clerk_sdk import Clerk
-from clerk_sdk.errors import ClerkAPIException
+from clerk_backend_api import Clerk
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -111,7 +110,7 @@ if not os.path.exists("temp_audio"):
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
 # --- Security: Authentication (UPDATED INITIALIZATION) ---
-clerk_client = Clerk(secret_key=clerk_secret_key)
+clerk_client = Clerk(bearer_auth=clerk_secret_key)
 
 # --- CORRECTED AUTHENTICATION DEPENDENCY ---
 async def get_current_user_id(authorization: str = Header(None)):
