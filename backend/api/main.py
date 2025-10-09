@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security (FINAL CORRECTED CLERK IMPORT) ---
-from clerk_backend_api import ClerkMiddleware, get_session
+from clerk_fastapi import ClerkMiddleware, get_session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
