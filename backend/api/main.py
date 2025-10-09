@@ -113,23 +113,36 @@ app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 clerk_client = Clerk(bearer_auth=clerk_secret_key)
 
 # --- CORRECTED AUTHENTICATION DEPENDENCY ---
+# backend/api/main.py
+
+# --- FINAL CORRECTED AUTHENTICATION DEPENDENCY ---
 async def get_current_user_id(authorization: str = Header(None)):
     """Dependency to extract and validate user ID from a Clerk JWT."""
     if authorization is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header is missing")
-    
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header is missing"
+        )
+
     try:
         token = authorization.split(" ")[1]
-        # Correctly call verify_token and get the claims
-        claims = clerk_client.sessions.verify_token(token)
-        user_id = claims.get("sub")
+        # CORRECTED: Use the verify_token method from the sessions API
+        session_claims = clerk_client.sessions.verify_token(token=token)
+
+        user_id = session_claims.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: User ID ('sub') is missing")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: User ID ('sub') is missing"
+            )
         return user_id
     except Exception as e:
-        # Catch a general exception and then raise the appropriate HTTP exception
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Clerk authentication failed: {e}")
-    
+        # Log the actual error from the Clerk SDK for debugging
+        print(f"Clerk Authentication Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token or authentication error: {e}"
+        )
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_CONTENT_TYPES = [
