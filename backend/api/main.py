@@ -22,7 +22,12 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # --- Security (FINAL CORRECTED CLERK IMPORT) ---
-from clerk_fastapi import ClerkMiddleware, get_session
+from clerk_backend_api.sdk import Clerk
+from clerk_backend_api.client import ClerkClient
+from fastapi import Depends, Request, HTTPException
+from typing import Dict, Any
+import os
+
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -63,7 +68,6 @@ db_pool = None
 app = FastAPI(
     title="Rex--AI API",
 )
-app.add_middleware(ClerkMiddleware)
 
 @app.on_event("startup")
 async def startup():
@@ -110,14 +114,24 @@ if not os.path.exists("temp_audio"):
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
 # --- FINAL CORRECTED AUTHENTICATION DEPENDENCY ---
-def get_current_user_id(session: Dict[str, Any] = Depends(get_session)):
-    """Dependency to get user ID from the Clerk session provided by the middleware."""
-    if not session:
+clerk_client = Clerk(secret_key=os.environ.get("CLERK_SECRET_KEY"))
+
+async def get_current_user_id(req: Request) -> str:
+    """Dependency to get user ID from the Clerk session in the Authorization header."""
+    authorization_header = req.headers.get("Authorization")
+    if not authorization_header:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    user_id = session.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User ID not found in session")
-    return user_id
+
+    try:
+        # Extract the token from the "Bearer" scheme
+        token = authorization_header.split(" ")[1]
+        # Verify the session
+        session = await clerk_client.sessions.verify_session(token=token)
+        if not session or not session.user_id:
+            raise HTTPException(status_code=401, detail="User ID not found in session")
+        return session.user_id
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
     
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
