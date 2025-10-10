@@ -1,4 +1,4 @@
-# model_utils.py
+# backend/model_utils.py
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, CrossEncoder
 import numpy as np
@@ -24,6 +24,7 @@ def load_generator():
 	# Using a supported Gemini model as a placeholder generator.
 	global _GENERATOR
 	if _GENERATOR is None:
+		# **ENSURE THIS IS 'gemini-pro'**
 		_GENERATOR = genai.GenerativeModel('gemini-pro')
 	return _GENERATOR
 

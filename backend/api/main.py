@@ -52,7 +52,7 @@ try:
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables.")
-    # CORRECTED and SIMPLIFIED configuration
+    # **CORRECTED AND SIMPLIFIED CONFIGURATION**
     genai.configure(api_key=api_key)
     print("--- Gemini AI configured successfully. ---")
 except Exception as e:
@@ -509,7 +509,8 @@ async def start_skill_test(request: Request, data: StartTestRequest, user_id: st
             
     except Exception as e:
         print(f"--- UNEXPECTED ERROR in start_skill_test for user {user_id}: {e} ---")
-        return JSONResponse(status_code=500, content={"message": f"An unexpected error occurred: {str(e)}"})
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/interview/evaluate-test/")
 @limiter.limit("10 per minute")
