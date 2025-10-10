@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 asyncpg
 clerk-backend-api
+fastapi-clerk-auth
 pyjwt[cryptography]
 google-generativeai
 gTTS
@@ -11,3 +12,4 @@ slowapi
 python-dotenv
 docx2txt
 PyMuPDF
+pytesseract

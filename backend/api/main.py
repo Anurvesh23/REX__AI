@@ -21,13 +21,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-# --- Security (FINAL CORRECTED CLERK IMPORT) ---
-from clerk_backend_api.sdk import Clerk
-from clerk_backend_api.client import ClerkClient
-from fastapi import Depends, Request, HTTPException
-from typing import Dict, Any
-import os
-
+# --- Security ---
+# CORRECTED CLERK IMPORT
+from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -47,6 +43,14 @@ from utils import save_upload_to_temp, extract_text_from_path
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env.local')
 load_dotenv(dotenv_path=dotenv_path)
 
+# --- Clerk Configuration ---
+# Set your Clerk JWKS URL from your environment variables
+jwks_url = os.getenv("CLERK_JWKS_URL")
+if not jwks_url:
+    raise ValueError("CLERK_JWKS_URL not found in environment variables.")
+
+clerk_config = ClerkConfig(jwks_url=jwks_url)
+
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -64,7 +68,6 @@ if not DATABASE_URL:
 db_pool = None
 
 # --- App & Middleware Setup ---
-# CORRECT: Initialize FastAPI and add ClerkMiddleware to handle auth automatically
 app = FastAPI(
     title="Rex--AI API",
 )
@@ -113,25 +116,20 @@ if not os.path.exists("temp_audio"):
     os.makedirs("temp_audio")
 app.mount("/temp_audio", StaticFiles(directory="temp_audio"), name="temp_audio")
 
-# --- FINAL CORRECTED AUTHENTICATION DEPENDENCY ---
-clerk_client = Clerk(secret_key=os.environ.get("CLERK_SECRET_KEY"))
+# --- CORRECTED AUTHENTICATION DEPENDENCY ---
+clerk_auth_guard = ClerkHTTPBearer(config=clerk_config)
 
-async def get_current_user_id(req: Request) -> str:
-    """Dependency to get user ID from the Clerk session in the Authorization header."""
-    authorization_header = req.headers.get("Authorization")
-    if not authorization_header:
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(clerk_auth_guard)) -> str:
+    """Dependency to get user ID from the Clerk session provided by the middleware."""
+    if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        # Extract the token from the "Bearer" scheme
-        token = authorization_header.split(" ")[1]
-        # Verify the session
-        session = await clerk_client.sessions.verify_session(token=token)
-        if not session or not session.user_id:
-            raise HTTPException(status_code=401, detail="User ID not found in session")
-        return session.user_id
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+    
+    # The user ID is in the 'sub' claim of the decoded token
+    user_id = credentials.decoded.get("sub")
+    
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found in session")
+    return user_id
     
 # --- Security: File Upload Validation ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
