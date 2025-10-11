@@ -13,3 +13,7 @@ python-dotenv
 docx2txt
 PyMuPDF
 pytesseract
+spacy
+numpy
+sentence-transformers
+faiss-cpu

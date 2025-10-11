@@ -25,7 +25,7 @@ def load_generator():
 	global _GENERATOR
 	if _GENERATOR is None:
 		# **ENSURE THIS IS 'gemini-1.0-pro'**
-		_GENERATOR = genai.GenerativeModel('gemini-1.0-pro')
+		_GENERATOR = genai.GenerativeModel('gemini-1.5-pro-latest')
 	return _GENERATOR
 
 def embed_texts(texts, model=None):
