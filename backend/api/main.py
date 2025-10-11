@@ -52,7 +52,6 @@ try:
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables.")
-    # CORRECT AND SIMPLIFIED CONFIGURATION
     genai.configure(api_key=api_key)
     print("--- Gemini AI configured successfully. ---")
 except Exception as e:
