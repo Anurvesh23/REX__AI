@@ -20,7 +20,7 @@ def expand_acronyms_via_llm(text, generator=None):
         from model_utils import load_generator
         gen = generator or load_generator()
         prompt = f"Expand acronyms and shortforms in the following professional resume text (keep everything else same):\n\n{text}"
-        out = gen(prompt, max_length=512, do_sample=False)[0]['generated_text']
+        out = gen.generate_content(prompt).text
         return out
     except Exception:
         return text
@@ -47,7 +47,7 @@ def extract_skills_dynamic(text):
         from model_utils import load_generator
         gen = load_generator()
         prompt = f"List the technical and soft skills, comma separated, present in this text:\n\n{text}"
-        out = gen(prompt, max_length=180, do_sample=False)[0]['generated_text']
+        out = gen.generate_content(prompt).text
         extracted = [s.strip().lower() for s in re.split(r",|\n|;", out) if s.strip()]
         cand.update(extracted)
     except Exception:
@@ -71,7 +71,7 @@ def extract_experience_years(text):
         from model_utils import load_generator
         gen = load_generator()
         prompt = f"From the following resume text, estimate how many years of professional experience the candidate has. If not clear, answer 0.\n\n{text}"
-        out = gen(prompt, max_length=64, do_sample=False)[0]['generated_text']
+        out = gen.generate_content(prompt).text
         nums = re.findall(r"\d+", out)
         if nums:
             return int(nums[0])
